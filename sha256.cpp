@@ -130,3 +130,39 @@ std::string sha256(std::string input)
         sprintf(buf+i*2, "%02x", digest[i]);
     return std::string(buf);
 }
+
+std::string sha256_file(std::string fileName){
+    // Создание экземпляра SHA256 и инициализация
+    SHA256 ctx = SHA256();
+    ctx.init();
+
+    // Открытие файла
+    std::ifstream file(fileName, std::ifstream::binary);
+
+    // Проверка открытия файла
+    if (!file.is_open()) {
+        // Обработка ошибки
+    }
+
+    const size_t buffer_size = 4096; // размер блока
+    unsigned char buffer[buffer_size];
+
+    // Чтение файла блоками
+    while (file.read(reinterpret_cast<char*>(buffer), buffer_size) || file.gcount() > 0) {
+        ctx.update(buffer, file.gcount());
+    }
+
+    // Завершение вычисления хеша
+    unsigned char digest[SHA256::DIGEST_SIZE];
+    ctx.final(digest);
+
+    // Преобразование хеша в строку
+    char buf[2*SHA256::DIGEST_SIZE+1];
+    buf[2*SHA256::DIGEST_SIZE] = 0;
+    for (int i = 0; i < SHA256::DIGEST_SIZE; i++) {
+        sprintf(buf + i * 2, "%02x", digest[i]);
+    }
+
+    file.close();
+    return std::string(buf);
+}

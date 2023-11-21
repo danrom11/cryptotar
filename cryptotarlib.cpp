@@ -1,4 +1,5 @@
 #include "cryptotarlib.hpp"
+#include "sha256.h"
 
 cryptotar::cryptotar(){
     std::cout << "ENABLED LIB" << std::endl;
@@ -56,7 +57,7 @@ int cryptotar::configObj(std::string& path, const struct stat& statObj, std::str
 
     } else if(S_ISDIR(statObj.st_mode)){
         DEBUG_PRINT_SEC("This dir: %s\n", path.c_str());
-        // return configDir(path, statObj, "/");
+        return configDir(path, statObj, "/");
 
     } else if(S_ISLNK(statObj.st_mode)){
         DEBUG_PRINT_SEC("This link: %s\n", path.c_str());
@@ -111,9 +112,8 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
     header.typeFlag = TarHeader::getTypeFlag(statObj.st_mode);
     DEBUG_PRINT_SEC("data name: %s\n", header.fileName.data());
 
+    header.calcChecksum(sha256_file(path).data());
 
-
-    //header.calcChecksum();
     if(writeHeaderTar((const char*)&header, sizeof(TarHeader))){
         DEBUG_PRINT_SEC("FILE: %s SEC HEADER WRITE!\n", path.c_str());
         std::string body;
@@ -127,11 +127,153 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         const std::string file_size = " size=" + size_str + '\n';
         body += getHexLength(file_size) + file_size;
 
-        if(writeHeaderTar(body.c_str(), body.size()))
-            DEBUG_PRINT_SEC("FILE: %s SEC BODY WRITE!\n", path.c_str());
+        // if(writeHeaderTar(body.c_str(), body.size()))
+        //     DEBUG_PRINT_SEC("FILE: %s SEC BODY WRITE!\n", path.c_str());
+
+        size_t bytesWritten = fwrite(body.c_str(), 1, body.size(), tarFile);
+        if(body.size() != bytesWritten){
+            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: write bytes to TAR Header EXTRA%s\n", "");
+        }
+
+        size_t blocks = expandSizeTo512Blocks(bytesWritten);
+        writeExpend512BYTES(blocks);
 
         if(writeDataFile(path, statObj.st_size))
             DEBUG_PRINT_SEC("FILE: %s SEC DATA WRITE!\n", path.c_str());
+    }
+
+    return 1;
+}
+
+
+int cryptotar::configDir(std::string& path, const struct stat& statObj, std::string px){ 
+    
+    std::string nameDir;
+    if(path[0] == '/'){
+        nameDir = fileName(path, px);
+        px = trimStringFromFolder(path, nameDir);
+    }
+    else{
+        if(flag_strip_path)
+            nameDir = trimString(path, strip_path);
+        else
+            nameDir = path;
+    }
+
+    DEBUG_PRINT_SEC("path=%s\n", path.c_str());
+    DEBUG_PRINT_SEC("nameDir=%s\n", nameDir.c_str());
+
+
+    if(path.back() != '/'){
+        path.push_back('/');
+        nameDir.push_back('/');
+    }
+
+    TarHeader header = {};
+
+    strcpy(header.formatTar.data(), "cryptotar\0");
+    if(__APPLE__){
+        strcpy(header.version.data(), "00\0");
+    } else {
+        strcpy(header.version.data(), " 0\0");
+    }
+
+
+    TarHeader::decToHexStr(header.uid, statObj.st_uid);
+    TarHeader::decToHexStr(header.gid, statObj.st_gid);
+    TarHeader::decToHexStr(header.mtime, statObj.st_mtime, 1);
+    TarHeader::decToHexStr(header.atime, statObj.st_atime);
+    TarHeader::decToHexStr(header.ctime, statObj.st_ctime);
+    TarHeader::decToHexStr(header.mode, statObj.st_mode & ACCESSPERMS);
+
+    TarHeader::decToHexStr(header.devmajor, major(statObj.st_dev));
+    TarHeader::decToHexStr(header.devminor, minor(statObj.st_dev));
+
+    if(const struct passwd* const pw = getpwuid(statObj.st_uid))
+        strcpy(header.uname.data(), pw->pw_name);
+    if(const struct group* const grp = getgrgid(statObj.st_gid))
+        strcpy(header.gname.data(), grp->gr_name);
+
+    strncpy(header.fileName.data(), nameDir.data(), std::min(header.fileName.size(), nameDir.size()));
+    header.typeFlag = TarHeader::getTypeFlag(statObj.st_mode);
+    // std::cout << "data name: " << header.name.data() << std::endl;
+    DEBUG_PRINT_SEC("data name: %s\n", header.fileName.data());
+    
+    header.calcChecksum(nullptr);
+
+    if(writeHeaderTar((const char*)&header, sizeof(TarHeader))){
+        DEBUG_PRINT_SEC("DIR: %s SEC HEADER WRITE!\n", path.c_str());
+        
+        std::string body;
+
+        const std::string pathToFile = " path=" + path + '\n';
+        body += getHexLength(pathToFile) + pathToFile;
+        
+        std::ostringstream ostr;
+        ostr<<statObj.st_size;
+        std::string size_str = ostr.str();
+        const std::string file_size = " size=" + size_str + '\n';
+        body += getHexLength(file_size) + file_size;
+
+        // if(writeHeaderTar(body.c_str(), body.size()))
+        //     DEBUG_PRINT_SEC("FILE: %s SEC BODY WRITE!\n", path.c_str());
+        // else
+        //     DEBUG_PRINT_ERR("ERR\n", "");
+        size_t bytesWritten = fwrite(body.c_str(), 1, body.size(), tarFile);
+        if(body.size() != bytesWritten){
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: write bytes to TAR Header EXTRA%s\n", "");
+        }
+
+        size_t blocks = expandSizeTo512Blocks(bytesWritten);
+
+        writeExpend512BYTES(blocks);
+    } else {
+        DEBUG_PRINT_ERR("DIR: %s ERR HEADER WRITE!\n", path.c_str());
+    }
+    
+    DIR* dir;
+    struct dirent *ent;
+    if ((dir = opendir(path.c_str())) != NULL) {
+        // читаем все файлы в директории
+        while ((ent = readdir(dir)) != NULL) {
+            // проверяем, что это не директория
+            if (ent->d_type == DT_REG) {
+                std::string fileName = path + ent->d_name; 
+                DEBUG_PRINT_SEC("Dir to file: %s\n", fileName.c_str());
+
+                int ret;
+                struct stat statObjFile;
+                if((ret = lstat(fileName.c_str(), &statObjFile)) == -1){
+                    DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Not found lstat file: %s\n", fileName.c_str());
+                    static_assert("stat");
+                    break;
+                }
+                configFile(fileName, statObjFile, px);
+            }
+            else if(ent->d_type == DT_DIR){
+                if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0){
+                    std::string DirName = path + ent->d_name; 
+                    DEBUG_PRINT_SEC("Dir to dir: %s\n", DirName.c_str());
+                    
+                    int ret;
+                    struct stat statObjFile;
+                    if((ret = lstat(DirName.c_str(), &statObjFile)) == -1){
+                        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Not found lstat file: %s\n", DirName.c_str());
+                        static_assert("stat");
+                        break;
+                    }
+                    configDir(DirName, statObjFile, px);
+                }
+                
+
+            }
+        }
+
+        closedir(dir); // закрываем директорию
+    } else {
+        // обработка ошибки, если не удалось открыть папку
+        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Open folder\n%s", "");
+        return EXIT_FAILURE;
     }
 
     return 1;

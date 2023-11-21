@@ -5,7 +5,7 @@
 
 int main(){
     std::vector<std::string> paths;
-    paths.push_back("file1");
+    paths.push_back("testFolder1");
 
     cryptotar tar("arh.ctar", paths);
 

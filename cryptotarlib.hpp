@@ -25,6 +25,7 @@
 #endif
 
 #include "TarHeader.hpp"
+#include "sha256.h"
 
 class cryptotar{
 public:
@@ -42,7 +43,7 @@ private:
 
     int configObj(std::string& path, const struct stat& stat, std::string px);
     int configFile(std::string& path, const struct stat& stat, std::string px);
-    // int configDir(std::string& path, const struct stat& stat, std::string px);
+    int configDir(std::string& path, const struct stat& stat, std::string px);
 
     int writeHeaderTar(const char* const buffer, const size_t bytesCount);
     int writeDataFile(std::string& path, const size_t sizeFile);

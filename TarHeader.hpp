@@ -55,7 +55,7 @@ struct TarHeader {
     
     static TYPELAGS getTypeFlag(const mode_t mode) noexcept;
 
-    void calcChecksum(const char* data, size_t size) noexcept; // Данную функцию следует вызывать в самом конце
+    void calcChecksum(const char* data) noexcept; // Данную функцию следует вызывать в самом конце
 };
 
 template<size_t N>
@@ -81,22 +81,23 @@ inline void TarHeader::decToHexStr(std::array<char, N>& hexStr, uintmax_t decNum
     }
 }
 
-inline void TarHeader::calcChecksum(const char* data, size_t size) noexcept {
+inline void TarHeader::calcChecksum(const char* data) noexcept {
     chksum.fill(' '); // Заполняем именно пробелами!!!
     uint64_t sum = 0;
     for(size_t i = 0; i < sizeof(TarHeader); ++i)
         sum += reinterpret_cast<unsigned char*>(this)[i];
     std::array<char, 8> sumFlags = {};
     decToHexStr(sumFlags, sum, 0);
-
-    std::string hashA = std::string(data);
-    for(auto it : sumFlags){
-        hashA.push_back(it);
-    }
-    std::string hash = sha256(data);
-    printf("hash: %s\n", hash.data());
-
+    std::string hashA;
+    if(data != nullptr)
+        hashA = std::string(data);
     
+    for(auto it : sumFlags)
+        hashA.push_back(it);
+
+    std::string hash = sha256(hashA);
+    for(int i = 0; i < hash.size(); i++)
+        chksum[i] = hash[i];
 }
 
 
