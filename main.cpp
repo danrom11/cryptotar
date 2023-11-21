@@ -1,9 +1,13 @@
 #include <iostream>
+#include <vector>
 
-#include "cryptotarlib.h"
-
+#include "cryptotarlib.hpp"
 
 int main(){
-    cryptotar lb;
+    std::vector<std::string> paths;
+    paths.push_back("file1");
+
+    cryptotar tar("arh.ctar", paths);
+
     return 0;
 }
