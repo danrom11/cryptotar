@@ -33,9 +33,11 @@ public:
     cryptotar(std::string archiveName);
     cryptotar(std::string archiveName, std::vector<std::string>& paths);
 
+    cryptotar(std::string pathToArhive, std::string ExtractTo);
 
     ~cryptotar();
 
+    int addPath(std::string& path);
 
 private:
 
