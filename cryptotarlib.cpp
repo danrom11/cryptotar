@@ -3,17 +3,21 @@
 
 cryptotar::cryptotar(){
     std::cout << "ENABLED LIB" << std::endl;
-    
 }
 
 cryptotar::cryptotar(std::string archiveName){
-
+    this->tarFile = fopen(archiveName.c_str(), "wb");
+    if(tarFile == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
+        // static_assert("create tar file");
+        return;
+    }
 }
 
 cryptotar::cryptotar(std::string archiveName, std::vector<std::string>& paths){
     this->tarFile = fopen(archiveName.c_str(), "wb");
     if(tarFile == NULL){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
         // static_assert("create tar file");
         return;
     }
@@ -24,7 +28,7 @@ cryptotar::cryptotar(std::string archiveName, std::vector<std::string>& paths){
         int ret;
         struct stat statObj;
         if((ret = lstat(it->c_str(), &statObj)) == -1){
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Not found lstat file: %s\n", it->c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Not found lstat file: %s\n", it->c_str());
         } else {
             this->countFilesSec += configObj(*it, statObj, "/");
         }
@@ -33,12 +37,28 @@ cryptotar::cryptotar(std::string archiveName, std::vector<std::string>& paths){
     closeTar();
 }
 
+int cryptotar::addPath(std::string& path){
+    if(this->tarFile == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Tar file not created:%s\n", "");
+    }
+
+    int ret;
+    struct stat statObj;
+    if((ret = lstat(path.c_str(), &statObj)) == -1){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Not found lstat file: %s\n", path.c_str());
+        return 0;
+    } else {
+        this->countFilesSec += configObj(path, statObj, "/");
+        return 1;
+    }
+}
+
 int cryptotar::closeTar(){
     if(this->tarFile != nullptr){
         if(writeExpend512BYTES(1024) && this->countFilesSec > 0)
             DEBUG_PRINT_SEC("Tar complited%s\n", "");
         else
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Last write bytes%s\n", "");
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Last write bytes%s\n", "");
         fclose(tarFile);
         return 1;
     }
@@ -70,13 +90,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
     TarHeader header = {};
 
     strcpy(header.formatTar.data(), "cryptotar\0");
-    
-    if(__APPLE__){
-        strcpy(header.version.data(), "00\0");
-        //std::cout << "APPLE" << std::endl;
-    } else {
-        strcpy(header.version.data(), " 0\0");
-    }
+    strcpy(header.version.data(), VERSION);
 
     //TODO: DEL
     std::string nameFile;
@@ -91,7 +105,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
             nameFile = path;
     }
 
-    //addPathTable(nameFile);
+    addPathTable(nameFile);
 
     TarHeader::decToHexStr(header.uid, statObj.st_uid);
     TarHeader::decToHexStr(header.gid, statObj.st_gid);
@@ -132,10 +146,11 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
 
         size_t bytesWritten = fwrite(body.c_str(), 1, body.size(), tarFile);
         if(body.size() != bytesWritten){
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: write bytes to TAR Header EXTRA%s\n", "");
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: write bytes to TAR Header EXTRA%s\n", "");
         }
 
         size_t blocks = expandSizeTo512Blocks(bytesWritten);
+        DEBUG_PRINT_SEC("Blocks: %lu\n", blocks);
         writeExpend512BYTES(blocks);
 
         if(writeDataFile(path, statObj.st_size))
@@ -172,11 +187,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
     TarHeader header = {};
 
     strcpy(header.formatTar.data(), "cryptotar\0");
-    if(__APPLE__){
-        strcpy(header.version.data(), "00\0");
-    } else {
-        strcpy(header.version.data(), " 0\0");
-    }
+    strcpy(header.version.data(), VERSION);
 
 
     TarHeader::decToHexStr(header.uid, statObj.st_uid);
@@ -244,7 +255,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
                 int ret;
                 struct stat statObjFile;
                 if((ret = lstat(fileName.c_str(), &statObjFile)) == -1){
-                    DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Not found lstat file: %s\n", fileName.c_str());
+                    DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Not found lstat file: %s\n", fileName.c_str());
                     static_assert("stat");
                     break;
                 }
@@ -258,7 +269,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
                     int ret;
                     struct stat statObjFile;
                     if((ret = lstat(DirName.c_str(), &statObjFile)) == -1){
-                        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Not found lstat file: %s\n", DirName.c_str());
+                        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Not found lstat file: %s\n", DirName.c_str());
                         static_assert("stat");
                         break;
                     }
@@ -272,7 +283,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
         closedir(dir); // закрываем директорию
     } else {
         // обработка ошибки, если не удалось открыть папку
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Open folder\n%s", "");
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open folder\n%s", "");
         return EXIT_FAILURE;
     }
 
@@ -283,7 +294,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
 int cryptotar::writeHeaderTar(const char* const buffer, const size_t bytesCount){
     size_t bytesWritten = fwrite(buffer, 1, bytesCount, tarFile);
     if(bytesCount != bytesWritten){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Write bytes to TAR Header\n%s", "");
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes to TAR Header\n%s", "");
         return 0;
     }
 
@@ -293,7 +304,7 @@ int cryptotar::writeHeaderTar(const char* const buffer, const size_t bytesCount)
 int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     FILE* file = fopen(path.c_str(), "rb+");
     if(file == NULL){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Open file: %s\n", path.c_str());
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open file: %s\n", path.c_str());
         return 0;
     }
     int fd = fileno(file);
@@ -306,7 +317,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     fl.l_pid = getpid();
 
     if(fcntl(fd, F_SETLK, &fl) == -1){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Lock file: %s\n", path.c_str());
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Lock file: %s\n", path.c_str());
         return 0;
     }
     fl.l_type = F_UNLCK;
@@ -317,20 +328,20 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     rewind(file);
 
     if(sizeFile != predictSize){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: The sizes are different: size1: %zu, size2: %zu\n", sizeFile, predictSize);
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: The sizes are different: size1: %zu, size2: %zu\n", sizeFile, predictSize);
         
         if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         fclose(file);
         return 0;
     }
 
     char* buffer = new char[sizeFile];
     if(buffer == NULL){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Malloc size: %zu\n", sizeFile);
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc size: %zu\n", sizeFile);
 
         if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         delete[] buffer;
         fclose(file);
         return 0;
@@ -338,10 +349,10 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     
     size_t readBytes = fread(buffer, 1, sizeFile, file);
     if(readBytes != sizeFile){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: The size are different read: %zu, size: %zu\n", readBytes, sizeFile);
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: The size are different read: %zu, size: %zu\n", readBytes, sizeFile);
 
         if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         delete[] buffer;
         fclose(file);
         return 0;
@@ -349,10 +360,10 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
 
     size_t bytesWritten = fwrite(buffer, 1, sizeFile, tarFile);
     if(sizeFile != bytesWritten){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Write bytes to Data file\n%s", "");
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes to Data file\n%s", "");
 
         if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         delete[] buffer;
         fclose(file);
         return 0;
@@ -364,7 +375,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     
     if(!writeExpend512BYTES(countZeros)){
         if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         delete[] buffer;
         fclose(file);
 
@@ -375,7 +386,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
 
     delete[] buffer;
     if(fcntl(fd, F_SETLK, &fl) == -1){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Unlock file: %s\n", path.c_str());
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         fclose(file);
         return 0;
     }
@@ -387,7 +398,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
 
 int cryptotar::writeExpend512BYTES(const size_t countZeros){
     if(tarFile == NULL){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Write bytes ZERO\n%s", "");
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes ZERO\n%s", "");
         return 0;
     }
     static constexpr uint64_t COPY_BUFFER_SIZE = 1024 * 1024 * 20; //409600 * sizeof(TARHeader);
@@ -395,7 +406,7 @@ int cryptotar::writeExpend512BYTES(const size_t countZeros){
     size_t bytesWritten = fwrite(m_buffer.data(), 1, countZeros, tarFile);
 
     if(bytesWritten != countZeros){
-        DEBUG_PRINT_ERR("OXYUSTAR_ERROR: Write bytes ZERO deifferent: %zu | %zu\n", countZeros, bytesWritten);
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes ZERO deifferent: %zu | %zu\n", countZeros, bytesWritten);
         return 0;
     }
     return 1;
@@ -483,6 +494,198 @@ std::string cryptotar::trimString(const std::string& str1, const std::string str
     } else {
         return str1;
     }
+}
+
+
+
+
+
+
+
+
+cryptotar::cryptotar(std::string pathToArhive, std::string ExtractToPath){
+    unpackTar(pathToArhive, ExtractToPath);
+}
+
+int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
+    FILE* file = fopen(pathToArhive.c_str(), "rb");
+    if(file == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptotar file: %s\n", pathToArhive.data());
+        return 0;
+    }
+
+    int blocksEnd = 0;
+
+    while(blocksEnd != 2){
+        TarHeader header;
+        readTarHeader(file, header);
+        
+        if(header.fileName.at(0) == 0x0){
+            std::cout << "Unpacking is complete!" << std::endl;
+            break;
+        }
+
+        printTarHeader(header);
+        
+        if(std::string(header.formatTar.data()) == "cryptotar\0"){
+            if(std::string(header.version.data()) != VERSION){
+                std::cerr << "The file version is "<< header.version.data() << " and you have " <<
+                    VERSION << " installed" << std::endl;
+                return 0;
+            }
+        } else {
+            std::cerr << "This file is not cryptotar" << std::endl;
+            return 0;
+        }
+
+        char ch;
+        int newlineCount = 0;
+        std::string dataUntilSecondNewline;
+
+        while ((ch = getc(file))) {
+            dataUntilSecondNewline.push_back(ch);
+            if (ch == '\n') {
+                newlineCount++;
+                if (newlineCount == 2) {
+                    break;
+                }
+            }
+        }
+
+        DEBUG_PRINT_SEC("pax: %s\n", dataUntilSecondNewline.data());
+        size_t size = 0;
+
+        size = std::stoull(findFromTo(dataUntilSecondNewline, "size=", "\n"));
+        std::string path = findFromTo(dataUntilSecondNewline, "path=", "\n");
+        
+        DEBUG_PRINT_SEC("size=%lu\n", size);
+        DEBUG_PRINT_SEC("path=%s\n", path.data());
+        
+        fseek(file, 512 - dataUntilSecondNewline.size(), SEEK_CUR);
+   
+        if(ExtractToPath != "."){
+            path.insert(0, ExtractToPath);
+            DEBUG_PRINT_SEC("New path: %s\n", path.data());
+        }
+
+        if(header.typeFlag == TarHeader::TYPELAGS::REGTYPE){
+
+            FILE* fileExtract = fopen(path.c_str(), "wb");
+            if(fileExtract == NULL){
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
+                return 0;
+            }
+            readFileWithProgress(file, fileExtract, size);
+            fclose(fileExtract);
+
+            size_t skeepNextBlock = expandSizeTo512Blocks(size);
+            DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
+            fseek(file, skeepNextBlock, SEEK_CUR); 
+        } else if(header.typeFlag == TarHeader::TYPELAGS::DIRTYPE){
+            path.pop_back();
+            mkdir(path.c_str(), 0777);
+        }
+
+
+
+        DEBUG_PRINT_SEC("--------------------------------------------------%s\n", "");
+    }
+    fclose(file);
+    return 1;
+}
+
+
+int cryptotar::readTarHeader(FILE* file, TarHeader& header){
+    int statusRead = 0;
+    statusRead += fread(header.fileName.data(), 1, 100, file);
+    statusRead += fread(header.formatTar.data(), 1, 10, file);
+    statusRead += fread(header.mode.data(), 1, 8, file);
+    statusRead += fread(header.uid.data(), 1, 8, file);
+    statusRead += fread(header.gid.data(), 1, 8, file);
+    statusRead += fread(header.mtime.data(), 1, 12, file);
+    statusRead += fread(header.chksum.data(), 1, 64, file);
+    char  typeFlag;
+    statusRead += fread(&typeFlag, 1, 1, file);
+    header.typeFlag = static_cast<TarHeader::TYPELAGS>(typeFlag);
+    
+    statusRead += fread(header.uname.data(), 1, 32, file);
+    statusRead += fread(header.gname.data(), 1, 32, file);
+    statusRead += fread(header.devmajor.data(), 1, 8, file);
+    statusRead += fread(header.devminor.data(), 1, 8, file);
+    statusRead += fread(header.atime.data(), 1, 12, file);
+    statusRead += fread(header.ctime.data(), 1, 12, file);
+    statusRead += fread(header.version.data(), 1, 2, file);
+    statusRead += fread(header.prefix.data(), 1, 195, file);
+
+    return statusRead;
+}
+
+void cryptotar::printTarHeader(TarHeader& header){
+    DEBUG_PRINT_SEC("fileName: %s\n", header.fileName.data());
+    DEBUG_PRINT_SEC("formatTar: %s\n", header.formatTar.data());
+    DEBUG_PRINT_SEC("mode: %s\n", header.mode.data());
+    DEBUG_PRINT_SEC("uid: %s\n", header.uid.data());
+    DEBUG_PRINT_SEC("gid: %s\n", header.gid.data());
+    DEBUG_PRINT_SEC("mtime: %s\n", header.mtime.data());
+    DEBUG_PRINT_SEC("chksum: %s\n", header.chksum.data());
+    DEBUG_PRINT_SEC("typeFlag: %c\n", static_cast<char>(header.typeFlag));
+    DEBUG_PRINT_SEC("uname: %s\n", header.uname.data());
+    DEBUG_PRINT_SEC("gname: %s\n", header.gname.data());
+    DEBUG_PRINT_SEC("devmajor: %s\n", header.devmajor.data());
+    DEBUG_PRINT_SEC("devminor: %s\n", header.devminor.data());
+    DEBUG_PRINT_SEC("atime: %s\n", header.atime.data());
+    DEBUG_PRINT_SEC("ctime: %s\n", header.ctime.data());
+    DEBUG_PRINT_SEC("version: %s\n", header.version.data());
+    DEBUG_PRINT_SEC("prefix: %s\n", header.prefix.data());
+}
+
+
+int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead){
+    const size_t blockSize = 1024;
+    std::vector<char> buffer(blockSize);
+    size_t totalBytesRead = 0;
+
+    while (totalBytesRead < totalBytesToRead) {
+        // Вычисляем размер следующего блока
+        size_t bytesToRead = std::min(blockSize, totalBytesToRead - totalBytesRead);
+
+        // Чтение блока данных
+        size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
+        totalBytesRead += bytesRead;
+        globalProgressCallback(totalBytesRead, totalBytesToRead);
+        
+        // Обработка прочитанных данных
+        fwrite(buffer.data(), 1, bytesRead, fileExtract);
+
+        if (bytesRead < bytesToRead) {
+             if (feof(fileTar)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: File end%s\n", "");
+            } else if (ferror(fileTar)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Read file%s\n", "");
+            }
+            break;
+        }
+    }
+    return totalBytesRead == totalBytesToRead;
+}
+
+
+std::string cryptotar::findFromTo(std::string& str, std::string from, std::string to){
+    size_t pos = str.find(from);
+
+    if (pos != std::string::npos) {
+        pos += from.size();
+        size_t endPos = str.find(to, pos);
+
+        if (endPos != std::string::npos) {
+            return str.substr(pos, endPos - pos);
+        } else {
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'abcd' not found after 'size='%s\n", "");
+        }
+    } else {
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
+    }
+    return str;
 }
 
 
