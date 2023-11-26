@@ -90,13 +90,8 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
     TarHeader header = {};
 
     strcpy(header.formatTar.data(), "cryptotar\0");
-    
-    if(__APPLE__){
-        strcpy(header.version.data(), "00\0");
-        //std::cout << "APPLE" << std::endl;
-    } else {
-        strcpy(header.version.data(), " 0\0");
-    }
+   
+    strcpy(header.version.data(), "01");
 
     //TODO: DEL
     std::string nameFile;
@@ -514,7 +509,162 @@ std::string cryptotar::trimString(const std::string& str1, const std::string str
 
 
 cryptotar::cryptotar(std::string pathToArhive, std::string ExtractTo){
+    FILE* file = fopen(pathToArhive.c_str(), "rb");
+    if(file == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptotar file: %s\n", pathToArhive.data());
+        return;
+    }
 
+    int blocksEnd = 0;
+
+    while(blocksEnd != 2){
+        TarHeader header;
+        readTarHeader(file, header);
+
+        if(header.fileName.at(0) == 0x0){
+            DEBUG_PRINT_SEC("END FILE%s\n", "");
+            break;
+        }
+
+
+        printTarHeader(header);
+
+
+        char ch;
+        int newlineCount = 0;
+        std::string dataUntilSecondNewline;
+
+        while ((ch = getc(file))) {
+            dataUntilSecondNewline.push_back(ch);
+            if (ch == '\n') {
+                newlineCount++;
+                if (newlineCount == 2) {
+                    break;
+                }
+            }
+        }
+
+        std::cout << dataUntilSecondNewline << std::endl;
+
+        size_t pos = dataUntilSecondNewline.find("size=");
+
+        size_t size = 0;
+        if (pos != std::string::npos) {
+            pos += 5; // Переместиться за 'size='
+            size_t endPos = dataUntilSecondNewline.find('\n', pos);
+
+            if (endPos != std::string::npos) {
+                std::string sizeStr = dataUntilSecondNewline.substr(pos, endPos - pos);
+                size = std::stoull(sizeStr); // Преобразовать строку в число
+            } else {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: '?' not found after 'size='%s\n", "");
+            }
+        } else {
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
+        }
+
+
+        DEBUG_PRINT_SEC("size=%lu\n", size);
+        fseek(file, 512 - dataUntilSecondNewline.size(), SEEK_CUR);
+
+        //std::vector<char> bytes(size);
+        //char* bytes = new char[size];
+        // if(bytes == nullptr){
+        //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc block bytes: %lu\n", size);
+        //     return;
+        // }
+
+        FILE* fileExtract = fopen(header.fileName.data(), "wb");
+        if(fileExtract == NULL){
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
+            return;
+        }
+        readFileWithProgress(file, fileExtract, size);
+        fclose(fileExtract);
+
+        size_t skeepNextBlock = expandSizeTo512Blocks(size);
+        DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
+        fseek(file, skeepNextBlock, SEEK_CUR);
+
+
+        DEBUG_PRINT_SEC("--------------------------------------------------%s\n", "");
+    }
+    fclose(file);
+}
+
+
+int cryptotar::readTarHeader(FILE* file, TarHeader& header){
+    int statusRead = 0;
+    statusRead += fread(header.fileName.data(), 1, 100, file);
+    statusRead += fread(header.formatTar.data(), 1, 10, file);
+    statusRead += fread(header.mode.data(), 1, 8, file);
+    statusRead += fread(header.uid.data(), 1, 8, file);
+    statusRead += fread(header.gid.data(), 1, 8, file);
+    statusRead += fread(header.mtime.data(), 1, 12, file);
+    statusRead += fread(header.chksum.data(), 1, 64, file);
+    char  typeFlag;
+    statusRead += fread(&typeFlag, 1, 1, file);
+    header.typeFlag = static_cast<TarHeader::TYPELAGS>(typeFlag);
+    
+    statusRead += fread(header.uname.data(), 1, 32, file);
+    statusRead += fread(header.gname.data(), 1, 32, file);
+    statusRead += fread(header.devmajor.data(), 1, 8, file);
+    statusRead += fread(header.devminor.data(), 1, 8, file);
+    statusRead += fread(header.atime.data(), 1, 12, file);
+    statusRead += fread(header.ctime.data(), 1, 12, file);
+    statusRead += fread(header.version.data(), 1, 2, file);
+    statusRead += fread(header.prefix.data(), 1, 195, file);
+
+    return statusRead;
+}
+
+void cryptotar::printTarHeader(TarHeader& header){
+    DEBUG_PRINT_SEC("fileName: %s\n", header.fileName.data());
+    DEBUG_PRINT_SEC("formatTar: %s\n", header.formatTar.data());
+    DEBUG_PRINT_SEC("mode: %s\n", header.mode.data());
+    DEBUG_PRINT_SEC("uid: %s\n", header.uid.data());
+    DEBUG_PRINT_SEC("gid: %s\n", header.gid.data());
+    DEBUG_PRINT_SEC("mtime: %s\n", header.mtime.data());
+    DEBUG_PRINT_SEC("chksum: %s\n", header.chksum.data());
+    DEBUG_PRINT_SEC("typeFlag: %c\n", static_cast<char>(header.typeFlag));
+    DEBUG_PRINT_SEC("uname: %s\n", header.uname.data());
+    DEBUG_PRINT_SEC("gname: %s\n", header.gname.data());
+    DEBUG_PRINT_SEC("devmajor: %s\n", header.devmajor.data());
+    DEBUG_PRINT_SEC("devminor: %s\n", header.devminor.data());
+    DEBUG_PRINT_SEC("atime: %s\n", header.atime.data());
+    DEBUG_PRINT_SEC("ctime: %s\n", header.ctime.data());
+    DEBUG_PRINT_SEC("version: %s\n", header.version.data());
+    DEBUG_PRINT_SEC("prefix: %s\n", header.prefix.data());
+}
+
+
+int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead){
+    const size_t blockSize = 1024;
+    std::vector<char> buffer(blockSize);
+    size_t totalBytesRead = 0;
+
+    while (totalBytesRead < totalBytesToRead) {
+        // Вычисляем размер следующего блока
+        size_t bytesToRead = std::min(blockSize, totalBytesToRead - totalBytesRead);
+
+        // Чтение блока данных
+        size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
+        totalBytesRead += bytesRead;
+        globalProgressCallback(totalBytesRead, totalBytesToRead);
+        
+        // Обработка прочитанных данных
+        fwrite(buffer.data(), 1, bytesRead, fileExtract);
+
+        if (bytesRead < bytesToRead) {
+             if (feof(fileTar)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: File end%s\n", "");
+            } else if (ferror(fileTar)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Read file%s\n", "");
+            }
+            break;
+        }
+    }
+    return totalBytesRead == totalBytesToRead;
 }
 
 

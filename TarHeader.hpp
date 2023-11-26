@@ -1,14 +1,13 @@
 //#ifdef TAR_HEADER_HPP
 //#define TAR_HEADER_HPP
 
-#include <_types/_uint64_t.h>
-#include <_types/_uintmax_t.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <array>
+#include <stdint.h>
 
 #include <iomanip>
 
