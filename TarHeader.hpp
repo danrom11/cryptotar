@@ -13,6 +13,7 @@
 
 #include "sha256.h"
 
+#define VERSION "01"
 
 struct TarHeader {
     enum class TYPELAGS : char {

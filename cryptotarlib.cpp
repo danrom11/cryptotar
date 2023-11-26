@@ -90,8 +90,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
     TarHeader header = {};
 
     strcpy(header.formatTar.data(), "cryptotar\0");
-   
-    strcpy(header.version.data(), "01");
+    strcpy(header.version.data(), VERSION);
 
     //TODO: DEL
     std::string nameFile;
@@ -151,7 +150,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         }
 
         size_t blocks = expandSizeTo512Blocks(bytesWritten);
-        std::cout << "blocks: " << blocks << std::endl;
+        DEBUG_PRINT_SEC("Blocks: %lu", blocks);
         writeExpend512BYTES(blocks);
 
         if(writeDataFile(path, statObj.st_size))
@@ -188,11 +187,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
     TarHeader header = {};
 
     strcpy(header.formatTar.data(), "cryptotar\0");
-    if(__APPLE__){
-        strcpy(header.version.data(), "00\0");
-    } else {
-        strcpy(header.version.data(), " 0\0");
-    }
+    strcpy(header.version.data(), VERSION);
 
 
     TarHeader::decToHexStr(header.uid, statObj.st_uid);
@@ -508,11 +503,15 @@ std::string cryptotar::trimString(const std::string& str1, const std::string str
 
 
 
-cryptotar::cryptotar(std::string pathToArhive, std::string ExtractTo){
+cryptotar::cryptotar(std::string pathToArhive, std::string ExtractToPath){
+    unpackTar(pathToArhive, ExtractToPath);
+}
+
+int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
     FILE* file = fopen(pathToArhive.c_str(), "rb");
     if(file == NULL){
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptotar file: %s\n", pathToArhive.data());
-        return;
+        return 0;
     }
 
     int blocksEnd = 0;
@@ -520,15 +519,24 @@ cryptotar::cryptotar(std::string pathToArhive, std::string ExtractTo){
     while(blocksEnd != 2){
         TarHeader header;
         readTarHeader(file, header);
-
+        
         if(header.fileName.at(0) == 0x0){
-            DEBUG_PRINT_SEC("END FILE%s\n", "");
+            std::cout << "Unpacking is complete!" << std::endl;
             break;
         }
 
-
         printTarHeader(header);
-
+        
+        if(std::string(header.formatTar.data()) == "cryptotar\0"){
+            if(std::string(header.version.data()) != VERSION){
+                std::cerr << "The file version is "<< header.version.data() << " and you have " <<
+                    VERSION << " installed" << std::endl;
+                return 0;
+            }
+        } else {
+            std::cerr << "This file is not cryptotar" << std::endl;
+            return 0;
+        }
 
         char ch;
         int newlineCount = 0;
@@ -544,52 +552,46 @@ cryptotar::cryptotar(std::string pathToArhive, std::string ExtractTo){
             }
         }
 
-        std::cout << dataUntilSecondNewline << std::endl;
-
-        size_t pos = dataUntilSecondNewline.find("size=");
-
+        DEBUG_PRINT_SEC("pax: %s\n", dataUntilSecondNewline.data());
         size_t size = 0;
-        if (pos != std::string::npos) {
-            pos += 5; // Переместиться за 'size='
-            size_t endPos = dataUntilSecondNewline.find('\n', pos);
 
-            if (endPos != std::string::npos) {
-                std::string sizeStr = dataUntilSecondNewline.substr(pos, endPos - pos);
-                size = std::stoull(sizeStr); // Преобразовать строку в число
-            } else {
-                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: '?' not found after 'size='%s\n", "");
-            }
-        } else {
-            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
-        }
-
-
+        size = std::stoull(findFromTo(dataUntilSecondNewline, "size=", "\n"));
+        std::string path = findFromTo(dataUntilSecondNewline, "path=", "\n");
+        
         DEBUG_PRINT_SEC("size=%lu\n", size);
+        DEBUG_PRINT_SEC("path=%s\n", path.data());
+        
         fseek(file, 512 - dataUntilSecondNewline.size(), SEEK_CUR);
-
-        //std::vector<char> bytes(size);
-        //char* bytes = new char[size];
-        // if(bytes == nullptr){
-        //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc block bytes: %lu\n", size);
-        //     return;
-        // }
-
-        FILE* fileExtract = fopen(header.fileName.data(), "wb");
-        if(fileExtract == NULL){
-            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
-            return;
+   
+        if(ExtractToPath != "."){
+            path.insert(0, ExtractToPath);
+            DEBUG_PRINT_SEC("New path: %s\n", path.data());
         }
-        readFileWithProgress(file, fileExtract, size);
-        fclose(fileExtract);
 
-        size_t skeepNextBlock = expandSizeTo512Blocks(size);
-        DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
-        fseek(file, skeepNextBlock, SEEK_CUR);
+        if(header.typeFlag == TarHeader::TYPELAGS::REGTYPE){
+
+            FILE* fileExtract = fopen(path.c_str(), "wb");
+            if(fileExtract == NULL){
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
+                return 0;
+            }
+            readFileWithProgress(file, fileExtract, size);
+            fclose(fileExtract);
+
+            size_t skeepNextBlock = expandSizeTo512Blocks(size);
+            DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
+            fseek(file, skeepNextBlock, SEEK_CUR); 
+        } else if(header.typeFlag == TarHeader::TYPELAGS::DIRTYPE){
+            path.pop_back();
+            mkdir(path.c_str(), 0777);
+        }
+
 
 
         DEBUG_PRINT_SEC("--------------------------------------------------%s\n", "");
     }
     fclose(file);
+    return 1;
 }
 
 
@@ -665,6 +667,25 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
         }
     }
     return totalBytesRead == totalBytesToRead;
+}
+
+
+std::string cryptotar::findFromTo(std::string& str, std::string from, std::string to){
+    size_t pos = str.find(from);
+
+    if (pos != std::string::npos) {
+        pos += from.size();
+        size_t endPos = str.find(to, pos);
+
+        if (endPos != std::string::npos) {
+            return str.substr(pos, endPos - pos);
+        } else {
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'abcd' not found after 'size='%s\n", "");
+        }
+    } else {
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
+    }
+    return str;
 }
 
 

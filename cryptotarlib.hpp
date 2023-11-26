@@ -55,7 +55,7 @@ public:
     int addPath(std::string& path);
     int closeTar();
 
-
+    int unpackTar(std::string pathToArhive, std::string ExtractToPath);
 private:
 
 
@@ -85,6 +85,8 @@ private:
 
     std::string fileName(std::string& path, std::string str);
     std::string trimStringFromFolder(const std::string& str, const std::string& folder);
+
+    std::string findFromTo(std::string& str, std::string from, std::string to);
 
     int addPathTable(std::string& path);
     std::unordered_map<std::string, int> filePaths; // Хэш-таблица для хранения путей и значений (1 или другого)
