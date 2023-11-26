@@ -150,7 +150,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         }
 
         size_t blocks = expandSizeTo512Blocks(bytesWritten);
-        DEBUG_PRINT_SEC("Blocks: %lu", blocks);
+        DEBUG_PRINT_SEC("Blocks: %lu\n", blocks);
         writeExpend512BYTES(blocks);
 
         if(writeDataFile(path, statObj.st_size))
