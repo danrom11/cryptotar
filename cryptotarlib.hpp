@@ -56,6 +56,8 @@ public:
     int closeTar();
 
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);
+
+    int setBlockSizeWrite(size_t bytes);
 private:
 
 
@@ -96,6 +98,8 @@ private:
     std::string strip_path;
 
     size_t countFilesSec = 0;
+
+    size_t blockSizeWrite = 4098;
 
     FILE* tarFile = nullptr;
 };

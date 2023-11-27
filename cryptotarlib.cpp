@@ -132,7 +132,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         DEBUG_PRINT_SEC("FILE: %s SEC HEADER WRITE!\n", path.c_str());
         std::string body;
 
-        const std::string pathToFile = " path=" + path + '\n';
+        const std::string pathToFile = " path=" + (path[0] == '/' ? nameFile : (path == nameFile) ? path : nameFile) + '\n';
         body += getHexLength(pathToFile) + pathToFile;
         
         std::ostringstream ostr;
@@ -217,7 +217,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
         
         std::string body;
 
-        const std::string pathToFile = " path=" + path + '\n';
+        const std::string pathToFile = " path=" + (path[0] == '/' ? nameDir : path) + '\n';
         body += getHexLength(pathToFile) + pathToFile;
         
         std::ostringstream ostr;
@@ -603,7 +603,7 @@ int cryptotar::readTarHeader(FILE* file, TarHeader& header){
     statusRead += fread(header.uid.data(), 1, 8, file);
     statusRead += fread(header.gid.data(), 1, 8, file);
     statusRead += fread(header.mtime.data(), 1, 12, file);
-    statusRead += fread(header.chksum.data(), 1, 64, file);
+    statusRead += fread(header.chksum.data(), 1, 65, file);
     char  typeFlag;
     statusRead += fread(&typeFlag, 1, 1, file);
     header.typeFlag = static_cast<TarHeader::TYPELAGS>(typeFlag);
@@ -615,7 +615,7 @@ int cryptotar::readTarHeader(FILE* file, TarHeader& header){
     statusRead += fread(header.atime.data(), 1, 12, file);
     statusRead += fread(header.ctime.data(), 1, 12, file);
     statusRead += fread(header.version.data(), 1, 2, file);
-    statusRead += fread(header.prefix.data(), 1, 195, file);
+    statusRead += fread(header.prefix.data(), 1, 194, file);
 
     return statusRead;
 }
@@ -641,13 +641,12 @@ void cryptotar::printTarHeader(TarHeader& header){
 
 
 int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead){
-    const size_t blockSize = 1024;
-    std::vector<char> buffer(blockSize);
+    std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
     while (totalBytesRead < totalBytesToRead) {
         // Вычисляем размер следующего блока
-        size_t bytesToRead = std::min(blockSize, totalBytesToRead - totalBytesRead);
+        size_t bytesToRead = std::min(blockSizeWrite, totalBytesToRead - totalBytesRead);
 
         // Чтение блока данных
         size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
@@ -686,6 +685,13 @@ std::string cryptotar::findFromTo(std::string& str, std::string from, std::strin
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
     }
     return str;
+}
+
+
+int cryptotar::setBlockSizeWrite(size_t bytes){
+    if(bytes < 1024)
+        return 0;
+    return blockSizeWrite = bytes;
 }
 
 
