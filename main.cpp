@@ -85,11 +85,13 @@ int main(int argc, char *argv[])
     QObject::connect(&buttondelete,&QPushButton::clicked,[&](){
         flag++;
         if(flag == 1){
+            buttondelete.setStyleSheet("background-color: rgb(180,180,180)");
     QObject::connect(list, &QListWidget::itemClicked, [&](QListWidgetItem *item){
             delete item;
         });
         }
         else if(flag == 2){
+            buttondelete.setStyleSheet("background-color: rgb(248,233,215)");
             flag = 0;
             QObject::disconnect(list, &QListWidget::itemClicked,0,0);
         }
