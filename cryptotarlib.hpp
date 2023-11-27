@@ -22,7 +22,6 @@
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-#define DEBUG
 
 #ifdef DEBUG
     #define DEBUG_PRINT_SEC(fmt, ...) fprintf(stderr, ANSI_COLOR_GREEN fmt ANSI_COLOR_RESET, __VA_ARGS__)
@@ -47,9 +46,11 @@ public:
 
     ~cryptotar();
 
-    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){ 
-        double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
-        std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){
+        #ifdef DEBUG
+            double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
+            std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+        #endif
     };
 
     int addPath(std::string& path);
