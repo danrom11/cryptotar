@@ -140,4 +140,4 @@ Key Features of CRYPTOTAR:
 
 6. Library Features.
 
-   You can read more features of the library in the library documentation at links
+   You can read more features of the library in the library documentation at [links](https://github.com/danrom11/cryptotar/blob/main/DOCUMENTATION.md#documentation)
