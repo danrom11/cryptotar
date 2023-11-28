@@ -38,7 +38,7 @@ using ProgressCallback = std::function<void(size_t bytesRead, size_t fileSize)>;
 
 class cryptotar{
 public:
-    cryptotar();
+    cryptotar() = default;
     cryptotar(std::string archiveName);
     cryptotar(std::string archiveName, std::vector<std::string>& paths);
 
@@ -100,7 +100,7 @@ private:
 
     size_t countFilesSec = 0;
 
-    size_t blockSizeWrite = 4098;
+    size_t blockSizeWrite = 4096;
 
     FILE* tarFile = nullptr;
 };

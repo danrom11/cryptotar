@@ -1,10 +1,6 @@
 #include "cryptotarlib.hpp"
 #include "sha256.h"
 
-cryptotar::cryptotar(){
-    std::cout << "ENABLED LIB" << std::endl;
-}
-
 cryptotar::cryptotar(std::string archiveName){
     this->tarFile = fopen(archiveName.c_str(), "wb");
     if(tarFile == NULL){
@@ -696,5 +692,8 @@ int cryptotar::setBlockSizeWrite(size_t bytes){
 
 
 cryptotar::~cryptotar(){
-    closeTar();
+    if(this->tarFile == nullptr)
+        fclose(tarFile);
+    else
+        closeTar();
 }
