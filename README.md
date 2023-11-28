@@ -118,25 +118,25 @@ Key Features of CRYPTOTAR:
     }
     ```
 
-    - Assembly `main.cpp`
+- Assembly `main.cpp`
 
-        - Compilation of the main program (`-I<path to library header files`)
-          
-          ```zsh
-          g++ -c main.cpp -o main.o -std=c++17 -I/Users/daniilarsentev/project/cryptotar
-          ```
+  - Compilation of the main program (`-I<path to library header files`)
+    
+    ```zsh
+    g++ -c main.cpp -o main.o -std=c++17 -I/Users/daniilarsentev/project/cryptotar
+    ```
 
-        - Linking with the library (`-L<path to library>`)
+  - Linking with the library (`-L<path to library>`)
 
-          ```zsh
-          g++ main.o -L. -lcryptotar -o main
-          ```
+    ```zsh
+    g++ main.o -L. -lcryptotar -o main
+    ```
 
-        - Launching the program
-     
-          ```
-          ./main
-          ```
+  - Launching the program
+
+    ```
+    ./main
+    ```
 
 6. Library Features.
 
