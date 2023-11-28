@@ -4,7 +4,7 @@ This document is the official documentation of Cryptotar and explains everything
 ---
 ## Navigating through documentation:
 *  [Cryptotarlib](#Cryptotarlib)
-    +  Installing and building the library
+    +  [Installing and building the library](#Installing-and-building-the-library)
     +  [The possibilities of using the library](#The-possibilities-of-using-the-library)
 
 *  Cryptotar console
