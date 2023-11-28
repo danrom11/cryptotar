@@ -696,5 +696,5 @@ int cryptotar::setBlockSizeWrite(size_t bytes){
 
 
 cryptotar::~cryptotar(){
-    std::cout << "DEST LIB" << std::endl;
+    closeTar();
 }
