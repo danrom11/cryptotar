@@ -58,6 +58,7 @@ int cryptotar::closeTar(){
         else
             DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Last write bytes%s\n", "");
         fclose(tarFile);
+        tarFile = nullptr;
         return 1;
     }
     DEBUG_PRINT_ERR("TAR file not creared%s\n", "");
