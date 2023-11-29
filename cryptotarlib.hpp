@@ -54,6 +54,8 @@ public:
     };
 
     int addPath(std::string& path);
+    
+    int openTar(std::string path);
     int closeTar();
 
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);

@@ -2,21 +2,12 @@
 #include "sha256.h"
 
 cryptotar::cryptotar(std::string archiveName){
-    this->tarFile = fopen(archiveName.c_str(), "wb");
-    if(tarFile == NULL){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
-        // static_assert("create tar file");
-        return;
-    }
+    openTar(archiveName);
 }
 
 cryptotar::cryptotar(std::string archiveName, std::vector<std::string>& paths){
-    this->tarFile = fopen(archiveName.c_str(), "wb");
-    if(tarFile == NULL){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
-        // static_assert("create tar file");
+    if(!openTar(archiveName))
         return;
-    }
 
     for(auto it = paths.begin(); it != paths.end(); it++){
         DEBUG_PRINT_SEC("file: %s\n", it->c_str());
@@ -47,6 +38,17 @@ int cryptotar::addPath(std::string& path){
         this->countFilesSec += configObj(path, statObj, "/");
         return 1;
     }
+}
+
+
+int cryptotar::openTar(std::string archiveName){
+    this->tarFile = fopen(archiveName.c_str(), "wb");
+    if(tarFile == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
+        // static_assert("create tar file");
+        return 0;
+    }
+    return 1;
 }
 
 int cryptotar::closeTar(){
@@ -514,7 +516,10 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
 
     while(blocksEnd != 2){
         TarHeader header;
-        readTarHeader(file, header);
+        if(readTarHeader(file, header) != 512){
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Error read block 512 bytes%s\n", "");
+            return 0;
+        }
         
         if(header.fileName.at(0) == 0x0){
             std::cout << "Unpacking is complete!" << std::endl;
@@ -692,8 +697,6 @@ int cryptotar::setBlockSizeWrite(size_t bytes){
 
 
 cryptotar::~cryptotar(){
-    if(this->tarFile == nullptr)
+    if(this->tarFile != nullptr)
         fclose(tarFile);
-    else
-        closeTar();
 }
