@@ -73,7 +73,7 @@ private:
     int writeExpend512BYTES(const size_t countZeros);
 
 
-    int readFileWithProgress(FILE* file, FILE* fileExtract, size_t bytes);
+    int readFileWithProgress(FILE* file, FILE* fileExtract, size_t bytes, TarHeader& header);
 
     int readTarHeader(FILE* file, TarHeader& header);
     void printTarHeader(TarHeader& header);

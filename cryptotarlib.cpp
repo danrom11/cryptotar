@@ -577,8 +577,16 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
                 DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
                 return 0;
             }
-            readFileWithProgress(file, fileExtract, size);
+            int status = readFileWithProgress(file, fileExtract, size, header);
             fclose(fileExtract);
+
+            if(!status){
+                if(!remove(path.c_str())){
+                    DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Failed to delete file!%s\n", "");
+                } else {
+                    DEBUG_PRINT_SEC("CRYPTOTAR: File %s deleted!\n", path.c_str());
+                }
+            }
 
             size_t skeepNextBlock = expandSizeTo512Blocks(size);
             DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
@@ -642,19 +650,22 @@ void cryptotar::printTarHeader(TarHeader& header){
 }
 
 
-int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead){
+int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead, TarHeader& header){
     std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
+    SHA256 ctx = SHA256();
+    ctx.init();
     while (totalBytesRead < totalBytesToRead) {
         // Вычисляем размер следующего блока
         size_t bytesToRead = std::min(blockSizeWrite, totalBytesToRead - totalBytesRead);
-
+        
         // Чтение блока данных
         size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
         totalBytesRead += bytesRead;
         globalProgressCallback(totalBytesRead, totalBytesToRead);
-        
+      
+        ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
         // Обработка прочитанных данных
         fwrite(buffer.data(), 1, bytesRead, fileExtract);
 
@@ -667,6 +678,45 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
             break;
         }
     }
+
+
+    unsigned char digest[SHA256::DIGEST_SIZE];
+    ctx.final(digest);
+
+    // Преобразование хеша в строку
+    char buf[2*SHA256::DIGEST_SIZE+1];
+    buf[2*SHA256::DIGEST_SIZE] = 0;
+    for (int i = 0; i < SHA256::DIGEST_SIZE; i++) {
+        snprintf(buf + i * 2, 3, "%02x", digest[i]);
+    }
+    std::string data(buf);
+
+
+    std::string fileHash;
+
+    for(int i = 0; i < header.chksum.size() - 1; i++)
+        fileHash.push_back(header.chksum.at(i));
+    header.chksum.fill('\0'); 
+
+    uint64_t sum = 0;
+    for(size_t i = 0; i < sizeof(TarHeader); ++i)
+        sum += reinterpret_cast<unsigned char*>(&header)[i];
+    std::array<char, 8> sumFlags = {};
+    TarHeader::decToHexStr(sumFlags, sum, 0);
+    std::string hashA;
+    hashA = std::string(data);
+    
+    for(auto it : sumFlags)
+        hashA.push_back(it);
+
+    std::string hash = sha256(hashA);
+
+    if(fileHash != hash){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Hashes don't match%s\n", "");
+        
+    }
+
+
     return totalBytesRead == totalBytesToRead;
 }
 
