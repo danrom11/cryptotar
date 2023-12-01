@@ -335,47 +335,72 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
         return 0;
     }
 
-    char* buffer = new char[sizeFile];
-    if(buffer == NULL){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc size: %zu\n", sizeFile);
 
-        if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
-        delete[] buffer;
-        fclose(file);
-        return 0;
-    }
-    
-    size_t readBytes = fread(buffer, 1, sizeFile, file);
-    if(readBytes != sizeFile){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: The size are different read: %zu, size: %zu\n", readBytes, sizeFile);
+    std::vector<char> buffer(blockSizeWrite);
+    size_t totalBytesRead = 0;
 
-        if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
-        delete[] buffer;
-        fclose(file);
-        return 0;
-    }
+    while (totalBytesRead < sizeFile) {
+        // Вычисляем размер следующего блока
+        size_t bytesToRead = std::min(blockSizeWrite, sizeFile - totalBytesRead);
+        
+        // Чтение блока данных
+        size_t bytesRead = fread(buffer.data(), 1, bytesToRead, file);
+        totalBytesRead += bytesRead;
+        globalProgressCallback(totalBytesRead, sizeFile);
+      
+        fwrite(buffer.data(), 1, bytesRead, tarFile);
 
-    size_t bytesWritten = fwrite(buffer, 1, sizeFile, tarFile);
-    if(sizeFile != bytesWritten){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes to Data file\n%s", "");
-
-        if(fcntl(fd, F_SETLK, &fl) == -1)
-            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
-        delete[] buffer;
-        fclose(file);
-        return 0;
+        if (bytesRead < bytesToRead) {
+             if (feof(file)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: File end%s\n", "");
+            } else if (ferror(file)) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Read file%s\n", "");
+            }
+            break;
+        }
     }
 
-    uint64_t countZeros = expandSizeTo512Blocks(bytesWritten);
+    // char* buffer = new char[sizeFile];
+    // if(buffer == NULL){
+    //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc size: %zu\n", sizeFile);
+    //
+    //     if(fcntl(fd, F_SETLK, &fl) == -1)
+    //         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
+    //     delete[] buffer;
+    //     fclose(file);
+    //     return 0;
+    // }
+    // 
+    // size_t readBytes = fread(buffer, 1, sizeFile, file);
+    // if(readBytes != sizeFile){
+    //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: The size are different read: %zu, size: %zu\n", readBytes, sizeFile);
+    //
+    //     if(fcntl(fd, F_SETLK, &fl) == -1)
+    //         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
+    //     delete[] buffer;
+    //     fclose(file);
+    //     return 0;
+    // }
+    //
+    // size_t bytesWritten = fwrite(buffer, 1, sizeFile, tarFile);
+    // if(sizeFile != bytesWritten){
+    //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Write bytes to Data file\n%s", "");
+    //
+    //     if(fcntl(fd, F_SETLK, &fl) == -1)
+    //         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
+    //     delete[] buffer;
+    //     fclose(file);
+    //     return 0;
+    // }
 
-    DEBUG_PRINT_SEC("INFO: writeB: %zu, countZeros: %llu\n", bytesWritten, countZeros);
+    uint64_t countZeros = expandSizeTo512Blocks(totalBytesRead);
+
+    DEBUG_PRINT_SEC("INFO: writeB: %zu, countZeros: %llu\n", totalBytesRead, countZeros);
     
     if(!writeExpend512BYTES(countZeros)){
         if(fcntl(fd, F_SETLK, &fl) == -1)
             DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
-        delete[] buffer;
+        // delete[] buffer;
         fclose(file);
 
         return 0;
@@ -383,7 +408,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
 
 
 
-    delete[] buffer;
+    // delete[] buffer;
     if(fcntl(fd, F_SETLK, &fl) == -1){
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Unlock file: %s\n", path.c_str());
         fclose(file);
