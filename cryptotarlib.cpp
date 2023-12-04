@@ -125,9 +125,11 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
     header.typeFlag = TarHeader::getTypeFlag(statObj.st_mode);
     DEBUG_PRINT_SEC("data name: %s\n", header.fileName.data());
 
-    header.calcChecksum(sha256_file(path).data());
+    // header.calcChecksum(sha256_file(path).data());
+    header.calcChecksum(nullptr);
 
     if(writeHeaderTar((const char*)&header, sizeof(TarHeader))){
+        size_t skipHash = ftell(tarFile) - 366;
         DEBUG_PRINT_SEC("FILE: %s SEC HEADER WRITE!\n", path.c_str());
         std::string body;
 
@@ -152,7 +154,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         DEBUG_PRINT_SEC("Blocks: %lu\n", blocks);
         writeExpend512BYTES(blocks);
 
-        if(writeDataFile(path, statObj.st_size))
+        if(writeDataFile(path, statObj.st_size, header, skipHash))
             DEBUG_PRINT_SEC("FILE: %s SEC DATA WRITE!\n", path.c_str());
     }
 
@@ -300,7 +302,7 @@ int cryptotar::writeHeaderTar(const char* const buffer, const size_t bytesCount)
     return 1;
 }
 
-int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
+int cryptotar::writeDataFile(std::string& path, const size_t sizeFile, TarHeader& header, size_t skipHash){
     FILE* file = fopen(path.c_str(), "rb+");
     if(file == NULL){
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open file: %s\n", path.c_str());
@@ -339,6 +341,9 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
     std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
+    SHA256 ctx = SHA256();
+    ctx.init();
+    
     while (totalBytesRead < sizeFile) {
         // Вычисляем размер следующего блока
         size_t bytesToRead = std::min(blockSizeWrite, sizeFile - totalBytesRead);
@@ -348,6 +353,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
         totalBytesRead += bytesRead;
         globalProgressCallback(totalBytesRead, sizeFile);
       
+        ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
         fwrite(buffer.data(), 1, bytesRead, tarFile);
 
         if (bytesRead < bytesToRead) {
@@ -360,6 +366,46 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile){
         }
     }
 
+    unsigned char digest[SHA256::DIGEST_SIZE];
+    ctx.final(digest);
+
+    // Преобразование хеша в строку
+    char buf[2*SHA256::DIGEST_SIZE+1];
+    buf[2*SHA256::DIGEST_SIZE] = 0;
+    for (int i = 0; i < SHA256::DIGEST_SIZE; i++) {
+        snprintf(buf + i * 2, 3, "%02x", digest[i]);
+    }
+    std::string data(buf);
+    header.chksum.fill('\0'); 
+
+    uint64_t sum = 0;
+    for(size_t i = 0; i < sizeof(TarHeader); ++i)
+        sum += reinterpret_cast<unsigned char*>(&header)[i];
+    std::array<char, 8> sumFlags = {};
+    TarHeader::decToHexStr(sumFlags, sum, 0);
+    std::string hashA;
+    hashA = std::string(data);
+
+    for(auto it : sumFlags)
+        hashA.push_back(it);
+
+    std::string hash = sha256(hashA);
+
+    size_t thisPos = ftell(tarFile);
+
+    fseek(tarFile, skipHash, SEEK_SET);
+    fwrite(hash.data(), 64, 1, tarFile);
+    char end = '\0';
+    fwrite(&end, 1, 1, tarFile);
+
+
+    fseek(tarFile, thisPos, SEEK_SET);
+
+
+
+
+
+    // hash = buf; 
     // char* buffer = new char[sizeFile];
     // if(buffer == NULL){
     //     DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Malloc size: %zu\n", sizeFile);

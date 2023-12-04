@@ -69,7 +69,7 @@ private:
     int configDir(std::string& path, const struct stat& stat, std::string px);
 
     int writeHeaderTar(const char* const buffer, const size_t bytesCount);
-    int writeDataFile(std::string& path, const size_t sizeFile);
+    int writeDataFile(std::string& path, const size_t sizeFile, TarHeader& header, size_t skipHash);
     int writeExpend512BYTES(const size_t countZeros);
 
 
