@@ -1,4 +1,3 @@
-#define LINUX
 #include <string>
 #include <unistd.h>
 #include <fcntl.h>
@@ -62,6 +61,9 @@ public:
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);
 
     int setBlockSizeWrite(size_t bytes);
+
+    void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey);
+    void disableCryptoModule();
 private:
 
 
@@ -70,7 +72,7 @@ private:
     int configDir(std::string& path, const struct stat& stat, std::string px);
 
     int writeHeaderTar(const char* const buffer, const size_t bytesCount);
-    int writeDataFile(std::string& path, const size_t sizeFile);
+    int writeDataFile(std::string& path, const size_t sizeFile, TarHeader& header, size_t skipHash);
     int writeExpend512BYTES(const size_t countZeros);
 
 
@@ -104,6 +106,10 @@ private:
     size_t countFilesSec = 0;
 
     size_t blockSizeWrite = 4096;
+
+    std::string pathToModule;
+    std::string key;
+    size_t sizeKey = 0;
 
     FILE* tarFile = nullptr;
 };
