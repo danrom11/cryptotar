@@ -38,7 +38,7 @@ struct TarHeader {
     std::array<char, 8> uid = {};
     std::array<char, 8> gid = {};
     std::array<char, 12> mtime = {};
-    std::array<char, 64> chksum = {};
+    std::array<char, 65> chksum = {};
     TYPELAGS typeFlag = {};
     std::array<char, 32> uname = {};
     std::array<char, 32> gname = {};
@@ -47,7 +47,7 @@ struct TarHeader {
     std::array<char, 12> atime = {}; //Время последнего доступа к файлу
     std::array<char, 12> ctime = {}; //Время последего изм прав дос
     std::array<char, 2> version = {};
-    std::array<char, 195> prefix = {};
+    std::array<char, 194> prefix = {};
 
 
     template<size_t N>
@@ -82,7 +82,7 @@ inline void TarHeader::decToHexStr(std::array<char, N>& hexStr, uintmax_t decNum
 }
 
 inline void TarHeader::calcChecksum(const char* data) noexcept {
-    chksum.fill(' '); // Заполняем именно пробелами!!!
+    chksum.fill('\0'); // Заполняем именно \0!!!
     uint64_t sum = 0;
     for(size_t i = 0; i < sizeof(TarHeader); ++i)
         sum += reinterpret_cast<unsigned char*>(this)[i];

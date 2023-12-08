@@ -5,6 +5,7 @@
 TEMPLATE = app
 TARGET = CryptoTar
 INCLUDEPATH += .
+LIBS += -L. -lcryptotar
 
 # You can make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -18,3 +19,6 @@ QT += network
 # Input
 SOURCES += \
     main.cpp
+
+DISTFILES += \
+    libcryptotar.a

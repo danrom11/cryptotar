@@ -1,26 +1,13 @@
 #include "cryptotarlib.hpp"
 #include "sha256.h"
 
-cryptotar::cryptotar(){
-    std::cout << "ENABLED LIB" << std::endl;
-}
-
 cryptotar::cryptotar(std::string archiveName){
-    this->tarFile = fopen(archiveName.c_str(), "wb");
-    if(tarFile == NULL){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
-        // static_assert("create tar file");
-        return;
-    }
+    openTar(archiveName);
 }
 
 cryptotar::cryptotar(std::string archiveName, std::vector<std::string>& paths){
-    this->tarFile = fopen(archiveName.c_str(), "wb");
-    if(tarFile == NULL){
-        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
-        // static_assert("create tar file");
+    if(!openTar(archiveName))
         return;
-    }
 
     for(auto it = paths.begin(); it != paths.end(); it++){
         DEBUG_PRINT_SEC("file: %s\n", it->c_str());
@@ -53,6 +40,17 @@ int cryptotar::addPath(std::string& path){
     }
 }
 
+
+int cryptotar::openTar(std::string archiveName){
+    this->tarFile = fopen(archiveName.c_str(), "wb");
+    if(tarFile == NULL){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create TAR file: %s\n", archiveName.c_str());
+        // static_assert("create tar file");
+        return 0;
+    }
+    return 1;
+}
+
 int cryptotar::closeTar(){
     if(this->tarFile != nullptr){
         if(writeExpend512BYTES(1024) && this->countFilesSec > 0)
@@ -60,6 +58,7 @@ int cryptotar::closeTar(){
         else
             DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Last write bytes%s\n", "");
         fclose(tarFile);
+        tarFile = nullptr;
         return 1;
     }
     DEBUG_PRINT_ERR("TAR file not creared%s\n", "");
@@ -132,7 +131,7 @@ int cryptotar::configFile(std::string& path, const struct stat& statObj, std::st
         DEBUG_PRINT_SEC("FILE: %s SEC HEADER WRITE!\n", path.c_str());
         std::string body;
 
-        const std::string pathToFile = " path=" + path + '\n';
+        const std::string pathToFile = " path=" + (path[0] == '/' ? nameFile : (path == nameFile) ? path : nameFile) + '\n';
         body += getHexLength(pathToFile) + pathToFile;
         
         std::ostringstream ostr;
@@ -217,7 +216,7 @@ int cryptotar::configDir(std::string& path, const struct stat& statObj, std::str
         
         std::string body;
 
-        const std::string pathToFile = " path=" + path + '\n';
+        const std::string pathToFile = " path=" + (path[0] == '/' ? nameDir : path) + '\n';
         body += getHexLength(pathToFile) + pathToFile;
         
         std::ostringstream ostr;
@@ -518,7 +517,10 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
 
     while(blocksEnd != 2){
         TarHeader header;
-        readTarHeader(file, header);
+        if(readTarHeader(file, header) != 512){
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Error read block 512 bytes%s\n", "");
+            return 0;
+        }
         
         if(header.fileName.at(0) == 0x0){
             std::cout << "Unpacking is complete!" << std::endl;
@@ -575,8 +577,16 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
                 DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Create file %s\n", header.fileName.data());
                 return 0;
             }
-            readFileWithProgress(file, fileExtract, size);
+            int status = readFileWithProgress(file, fileExtract, size, header);
             fclose(fileExtract);
+
+            if(!status){
+                if(!remove(path.c_str())){
+                    DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Failed to delete file!%s\n", "");
+                } else {
+                    DEBUG_PRINT_SEC("CRYPTOTAR: File %s deleted!\n", path.c_str());
+                }
+            }
 
             size_t skeepNextBlock = expandSizeTo512Blocks(size);
             DEBUG_PRINT_SEC("Blocks: %lu\n", skeepNextBlock);
@@ -603,7 +613,7 @@ int cryptotar::readTarHeader(FILE* file, TarHeader& header){
     statusRead += fread(header.uid.data(), 1, 8, file);
     statusRead += fread(header.gid.data(), 1, 8, file);
     statusRead += fread(header.mtime.data(), 1, 12, file);
-    statusRead += fread(header.chksum.data(), 1, 64, file);
+    statusRead += fread(header.chksum.data(), 1, 65, file);
     char  typeFlag;
     statusRead += fread(&typeFlag, 1, 1, file);
     header.typeFlag = static_cast<TarHeader::TYPELAGS>(typeFlag);
@@ -615,7 +625,7 @@ int cryptotar::readTarHeader(FILE* file, TarHeader& header){
     statusRead += fread(header.atime.data(), 1, 12, file);
     statusRead += fread(header.ctime.data(), 1, 12, file);
     statusRead += fread(header.version.data(), 1, 2, file);
-    statusRead += fread(header.prefix.data(), 1, 195, file);
+    statusRead += fread(header.prefix.data(), 1, 194, file);
 
     return statusRead;
 }
@@ -640,20 +650,22 @@ void cryptotar::printTarHeader(TarHeader& header){
 }
 
 
-int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead){
-    const size_t blockSize = 1024;
-    std::vector<char> buffer(blockSize);
+int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead, TarHeader& header){
+    std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
+    SHA256 ctx = SHA256();
+    ctx.init();
     while (totalBytesRead < totalBytesToRead) {
         // Вычисляем размер следующего блока
-        size_t bytesToRead = std::min(blockSize, totalBytesToRead - totalBytesRead);
-
+        size_t bytesToRead = std::min(blockSizeWrite, totalBytesToRead - totalBytesRead);
+        
         // Чтение блока данных
         size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
         totalBytesRead += bytesRead;
         globalProgressCallback(totalBytesRead, totalBytesToRead);
-        
+      
+        ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
         // Обработка прочитанных данных
         fwrite(buffer.data(), 1, bytesRead, fileExtract);
 
@@ -666,6 +678,45 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
             break;
         }
     }
+
+
+    unsigned char digest[SHA256::DIGEST_SIZE];
+    ctx.final(digest);
+
+    // Преобразование хеша в строку
+    char buf[2*SHA256::DIGEST_SIZE+1];
+    buf[2*SHA256::DIGEST_SIZE] = 0;
+    for (int i = 0; i < SHA256::DIGEST_SIZE; i++) {
+        snprintf(buf + i * 2, 3, "%02x", digest[i]);
+    }
+    std::string data(buf);
+
+
+    std::string fileHash;
+
+    for(int i = 0; i < header.chksum.size() - 1; i++)
+        fileHash.push_back(header.chksum.at(i));
+    header.chksum.fill('\0'); 
+
+    uint64_t sum = 0;
+    for(size_t i = 0; i < sizeof(TarHeader); ++i)
+        sum += reinterpret_cast<unsigned char*>(&header)[i];
+    std::array<char, 8> sumFlags = {};
+    TarHeader::decToHexStr(sumFlags, sum, 0);
+    std::string hashA;
+    hashA = std::string(data);
+    
+    for(auto it : sumFlags)
+        hashA.push_back(it);
+
+    std::string hash = sha256(hashA);
+
+    if(fileHash != hash){
+        DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Hashes don't match%s\n", "");
+        
+    }
+
+
     return totalBytesRead == totalBytesToRead;
 }
 
@@ -689,6 +740,14 @@ std::string cryptotar::findFromTo(std::string& str, std::string from, std::strin
 }
 
 
+int cryptotar::setBlockSizeWrite(size_t bytes){
+    if(bytes < 1024)
+        return 0;
+    return blockSizeWrite = bytes;
+}
+
+
 cryptotar::~cryptotar(){
-    std::cout << "DEST LIB" << std::endl;
+    if(this->tarFile != nullptr)
+        fclose(tarFile);
 }

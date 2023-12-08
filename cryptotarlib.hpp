@@ -1,3 +1,4 @@
+#define LINUX
 #include <string>
 #include <unistd.h>
 #include <fcntl.h>
@@ -22,7 +23,6 @@
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-#define DEBUG
 
 #ifdef DEBUG
     #define DEBUG_PRINT_SEC(fmt, ...) fprintf(stderr, ANSI_COLOR_GREEN fmt ANSI_COLOR_RESET, __VA_ARGS__)
@@ -39,7 +39,7 @@ using ProgressCallback = std::function<void(size_t bytesRead, size_t fileSize)>;
 
 class cryptotar{
 public:
-    cryptotar();
+    cryptotar() = default;
     cryptotar(std::string archiveName);
     cryptotar(std::string archiveName, std::vector<std::string>& paths);
 
@@ -47,15 +47,21 @@ public:
 
     ~cryptotar();
 
-    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){ 
-        double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
-        std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){
+        #ifdef DEBUG
+            double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
+            std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+        #endif
     };
 
     int addPath(std::string& path);
+    
+    int openTar(std::string path);
     int closeTar();
 
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);
+
+    int setBlockSizeWrite(size_t bytes);
 private:
 
 
@@ -68,7 +74,7 @@ private:
     int writeExpend512BYTES(const size_t countZeros);
 
 
-    int readFileWithProgress(FILE* file, FILE* fileExtract, size_t bytes);
+    int readFileWithProgress(FILE* file, FILE* fileExtract, size_t bytes, TarHeader& header);
 
     int readTarHeader(FILE* file, TarHeader& header);
     void printTarHeader(TarHeader& header);
@@ -96,6 +102,8 @@ private:
     std::string strip_path;
 
     size_t countFilesSec = 0;
+
+    size_t blockSizeWrite = 4096;
 
     FILE* tarFile = nullptr;
 };
