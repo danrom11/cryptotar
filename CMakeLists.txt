@@ -8,10 +8,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_C_FLAGS_LINUX "${CMAKE_C_FLAGS_DEBUG} -DLINUX")
 set(CMAKE_CXX_FLAGS_LINUX "${CMAKE_CXX_FLAGS_DEBUG} -DLINUX")
 
-set(SOURCES main.cpp)
+# set(SOURCES main.cpp)
 
 add_library(cryptotar STATIC cryptotarlib.cpp TarHeader.hpp sha256.cpp)
 
-add_executable(test_cryptotarlib ${SOURCES})
+# add_executable(test_cryptotarlib ${SOURCES})
 
-target_link_libraries(test_cryptotarlib cryptotar)
+# target_link_libraries(test_cryptotarlib cryptotar)
