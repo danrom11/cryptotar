@@ -350,7 +350,6 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile, TarHeader
         // Открываем библиотеку
         void* libraryHandle = dlopen(libraryPath, RTLD_LAZY);
         if (!libraryHandle) {
-            std::cerr << "Ошибка при открытии библиотеки: " << dlerror() << std::endl;
             DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptoModule: %s, log: %s\n", this->pathToModule.c_str(), dlerror());
             return 1;
         }
@@ -768,7 +767,6 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
         // Открываем библиотеку
         void* libraryHandle = dlopen(libraryPath, RTLD_LAZY);
         if (!libraryHandle) {
-            std::cerr << "Ошибка при открытии библиотеки: " << dlerror() << std::endl;
             DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptoModule: %s, log: %s\n", this->pathToModule.c_str(), dlerror());
             return 1;
         }
