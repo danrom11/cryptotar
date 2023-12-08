@@ -61,6 +61,9 @@ public:
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);
 
     int setBlockSizeWrite(size_t bytes);
+
+    void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey);
+    void disableCryptoModule();
 private:
 
 
@@ -103,6 +106,10 @@ private:
     size_t countFilesSec = 0;
 
     size_t blockSizeWrite = 4096;
+
+    std::string pathToModule;
+    std::string key;
+    size_t sizeKey = 0;
 
     FILE* tarFile = nullptr;
 };

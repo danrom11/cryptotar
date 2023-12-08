@@ -1,5 +1,9 @@
 #include "cryptotarlib.hpp"
 #include "sha256.h"
+#include "cryptoModule.hpp"
+#include <dlfcn.h>
+#include <memory>
+#include <string>
 
 cryptotar::cryptotar(std::string archiveName){
     openTar(archiveName);
@@ -52,6 +56,7 @@ int cryptotar::openTar(std::string archiveName){
 }
 
 int cryptotar::closeTar(){
+    disableCryptoModule();
     if(this->tarFile != nullptr){
         if(writeExpend512BYTES(1024) && this->countFilesSec > 0)
             DEBUG_PRINT_SEC("Tar complited%s\n", "");
@@ -338,6 +343,28 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile, TarHeader
     }
 
 
+    cryptoModule* classCryptoModule = nullptr;
+    
+    if(!this->pathToModule.empty()){
+        const char* libraryPath = this->pathToModule.c_str();
+        // Открываем библиотеку
+        void* libraryHandle = dlopen(libraryPath, RTLD_LAZY);
+        if (!libraryHandle) {
+            std::cerr << "Ошибка при открытии библиотеки: " << dlerror() << std::endl;
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptoModule: %s, log: %s\n", this->pathToModule.c_str(), dlerror());
+            return 1;
+        }
+        
+        std::function<cryptoModule*(void)> make;
+
+        make = reinterpret_cast<cryptoModule*(*)(void)>(dlsym(libraryHandle, "makechild"));
+
+        classCryptoModule = make();
+    }
+
+
+
+
     std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
@@ -354,6 +381,17 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile, TarHeader
         globalProgressCallback(totalBytesRead, sizeFile);
       
         ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
+        
+        if(classCryptoModule != nullptr){
+            DEBUG_PRINT_SEC("===CRYPTO===%s\n", "");
+            classCryptoModule->setKey(this->key.data(), this->sizeKey);
+            char* charPtr = reinterpret_cast<char*>(classCryptoModule->cryptoData(reinterpret_cast<unsigned char*>(buffer.data()), bytesRead));
+            buffer.clear();
+            for(size_t i = 0; i < blockSizeWrite; i++)
+                buffer.push_back(charPtr[i]);
+        }
+        
+        
         fwrite(buffer.data(), 1, bytesRead, tarFile);
 
         if (bytesRead < bytesToRead) {
@@ -722,11 +760,33 @@ void cryptotar::printTarHeader(TarHeader& header){
 
 
 int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t totalBytesToRead, TarHeader& header){
+    
+    cryptoModule* classCryptoModule = nullptr;
+    
+    if(!this->pathToModule.empty()){
+        const char* libraryPath = this->pathToModule.c_str();
+        // Открываем библиотеку
+        void* libraryHandle = dlopen(libraryPath, RTLD_LAZY);
+        if (!libraryHandle) {
+            std::cerr << "Ошибка при открытии библиотеки: " << dlerror() << std::endl;
+            DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Open cryptoModule: %s, log: %s\n", this->pathToModule.c_str(), dlerror());
+            return 1;
+        }
+        
+        std::function<cryptoModule*(void)> make;
+
+        make = reinterpret_cast<cryptoModule*(*)(void)>(dlsym(libraryHandle, "makechild"));
+
+        classCryptoModule = make();
+    }
+
+
     std::vector<char> buffer(blockSizeWrite);
     size_t totalBytesRead = 0;
 
     SHA256 ctx = SHA256();
     ctx.init();
+
     while (totalBytesRead < totalBytesToRead) {
         // Вычисляем размер следующего блока
         size_t bytesToRead = std::min(blockSizeWrite, totalBytesToRead - totalBytesRead);
@@ -736,8 +796,18 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
         totalBytesRead += bytesRead;
         globalProgressCallback(totalBytesRead, totalBytesToRead);
       
+        if(classCryptoModule != nullptr){
+            DEBUG_PRINT_SEC("===UNCRYPTO===%s\n", "");
+            classCryptoModule->setKey(this->key.data(), this->sizeKey);
+            char* charPtr = reinterpret_cast<char*>(classCryptoModule->uncryptoData(reinterpret_cast<unsigned char*>(buffer.data()), bytesRead));
+            buffer.clear();
+            for(size_t i = 0; i < blockSizeWrite; i++)
+                buffer.push_back(charPtr[i]);
+        }
+        
         ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
         // Обработка прочитанных данных
+        
         fwrite(buffer.data(), 1, bytesRead, fileExtract);
 
         if (bytesRead < bytesToRead) {
@@ -815,6 +885,20 @@ int cryptotar::setBlockSizeWrite(size_t bytes){
     if(bytes < 1024)
         return 0;
     return blockSizeWrite = bytes;
+}
+
+
+void cryptotar::setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey){
+    this->pathToModule = pathToModule;
+    this->key = key;
+    this->sizeKey = sizeKey;
+}
+
+
+void cryptotar::disableCryptoModule(){
+    this->pathToModule.clear();
+    this->key.clear();
+    this->sizeKey = 0;
 }
 
 
