@@ -1,7 +1,7 @@
-#include "cryptoModule.hpp"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "rc4CryptoModule.hpp"
 
 #define N 256   // 2^8
 
