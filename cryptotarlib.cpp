@@ -689,8 +689,8 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
             fclose(fileExtract);
 
             if(!status){
-                if(!remove(path.c_str())){
-                    DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Failed to delete file!%s\n", "");
+                if(remove(path.c_str())){
+                    DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Failed to delete file: %s\n", path.c_str());
                 } else {
                     DEBUG_PRINT_SEC("CRYPTOTAR: File %s deleted!\n", path.c_str());
                 }
@@ -852,7 +852,7 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
 
     if(fileHash != hash){
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Hashes don't match%s\n", "");
-        
+        return 0;
     }
 
 
