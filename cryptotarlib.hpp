@@ -12,7 +12,8 @@
 #include <grp.h>
 #include <sys/stat.h>
 #include <stdarg.h>
-
+#include <dlfcn.h>
+#include <memory>
 
 #ifdef LINUX
     #include <sys/sysmacros.h>
@@ -32,9 +33,9 @@
 #endif
 
 #include "TarHeader.hpp"
-#include "sha256.h"
 
-using ProgressCallback = std::function<void(size_t bytesRead, size_t fileSize)>;
+using ProgressCallback = std::function<void(size_t bytesRead, size_t fileSize, char* fileName)>;
+using TarHeaderCallback = std::function<void(TarHeader header, size_t size, char* path)>;
 
 class cryptotar{
 public:
@@ -46,10 +47,16 @@ public:
 
     ~cryptotar();
 
-    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){
+    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize, char* fileName){
         #ifdef DEBUG
             double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
-            std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+            std::cout << "File: " << fileName << " read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+        #endif
+    };
+
+    TarHeaderCallback globalTarHeaderCallback = [](TarHeader header, size_t size, char* path){
+        #ifdef DEBUG
+            std::cout << "Header: " << header.fileName.data() << " Size: " << size << " Path: " << path << std::endl;             
         #endif
     };
 

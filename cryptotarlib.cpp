@@ -1,9 +1,6 @@
 #include "cryptotarlib.hpp"
-#include "sha256.h"
 #include "cryptoModule.hpp"
-#include <dlfcn.h>
-#include <memory>
-#include <string>
+#include "sha256.h"
 
 cryptotar::cryptotar(std::string archiveName){
     openTar(archiveName);
@@ -377,7 +374,7 @@ int cryptotar::writeDataFile(std::string& path, const size_t sizeFile, TarHeader
         // Чтение блока данных
         size_t bytesRead = fread(buffer.data(), 1, bytesToRead, file);
         totalBytesRead += bytesRead;
-        globalProgressCallback(totalBytesRead, sizeFile);
+        globalProgressCallback(totalBytesRead, sizeFile, header.fileName.data());
       
         ctx.update(reinterpret_cast<const unsigned char*>(buffer.data()), bytesRead);
         
@@ -670,6 +667,7 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
         
         DEBUG_PRINT_SEC("size=%lu\n", size);
         DEBUG_PRINT_SEC("path=%s\n", path.data());
+        globalTarHeaderCallback(header, size, path.data());
         
         fseek(file, 512 - dataUntilSecondNewline.size(), SEEK_CUR);
    
@@ -792,7 +790,7 @@ int cryptotar::readFileWithProgress(FILE* fileTar, FILE* fileExtract, size_t tot
         // Чтение блока данных
         size_t bytesRead = fread(buffer.data(), 1, bytesToRead, fileTar);
         totalBytesRead += bytesRead;
-        globalProgressCallback(totalBytesRead, totalBytesToRead);
+        globalProgressCallback(totalBytesRead, totalBytesToRead, header.fileName.data());
       
         if(classCryptoModule != nullptr){
             DEBUG_PRINT_SEC("===UNCRYPTO===%s\n", "");
