@@ -5,10 +5,6 @@
 
 #include "cryptotarlib.hpp"
 
-void customProgress(size_t bytesRead, size_t fileSize) {
-
-	std::cout << "Bytes read: " << bytesRead << std::endl;
-}
 
 int  main(int argc, char *argv[]){
 
@@ -107,10 +103,8 @@ int  main(int argc, char *argv[]){
 	if ( has_u == true ) {
 
 		cryptotar tarEx;
-		
-		tarEx.globalProgressCallback = customProgress;
 
-		if (has_o == true ) tarEx.unpackTar(unpack_ctar, output_file_name);
+		if ( has_o == true ) tarEx.unpackTar(unpack_ctar, output_file_name);
 		else tarEx.unpackTar(unpack_ctar, ".");
 
 		tarEx.closeTar();
