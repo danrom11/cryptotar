@@ -1,5 +1,6 @@
 //#ifdef TAR_HEADER_HPP
 //#define TAR_HEADER_HPP
+#define LINUX
 
 #include <algorithm>
 #include <sstream>

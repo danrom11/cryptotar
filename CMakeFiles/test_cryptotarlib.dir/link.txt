@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -DDEBUG -DLINUX CMakeFiles/test_cryptotarlib.dir/main.cpp.o -o test_cryptotarlib  libcryptotar.a 

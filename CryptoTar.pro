@@ -18,7 +18,6 @@ QT += network
 
 # Input
 SOURCES += \
-    main.cpp
+    CryptoTarGUI.cpp
 
-DISTFILES += \
-    libcryptotar.a
+DISTFILES +=

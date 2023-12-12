@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcryptotar.a CMakeFiles/cryptotar.dir/cryptotarlib.cpp.o CMakeFiles/cryptotar.dir/sha256.cpp.o
+/usr/bin/ranlib libcryptotar.a

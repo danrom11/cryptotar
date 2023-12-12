@@ -21,18 +21,26 @@
 #include <QLineEdit>
 #include <QInputDialog>
 #include <string>
+#include <QIcon>
+#include <QCoreApplication>
+#include <QFile>
+#include <QProgressBar>
+#include <QTimer>
 using namespace std;
 string special = "";
-
-
-void customProgress(size_t bytesRead,size_t fileSize){
-
-    special = "Bytes read: " + std::to_string(bytesRead);
+qint64 bytesbts = 0;
+void customprogress(size_t bytesRead,size_t filesize){
+    bytesbts = bytesbts + static_cast<qint64>(bytesRead);
+    qDebug()<< bytesRead;
 }
+
 int main(int argc, char *argv[])
 {
-
+//QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
     int flag = 0;
+    qint64 totalsum = 0;
+    qint64 unsum = 0;
+    setenv("QT_X11_NO_MITSHM","1",1);
 
 	QApplication app(argc, argv);
     QWidget window;
@@ -49,11 +57,20 @@ int main(int argc, char *argv[])
     hline.setGeometry(0,107,642,1);
     hline.setStyleSheet("background-color: rgb(0,0,0)");
     int count = 0;
-
+   QString corepath =QCoreApplication::applicationDirPath();
+    corepath.resize(corepath.length() - 29);
     //ADDBUTTON
 
-    QPushButton buttonadd("Add file", &frame);
+    QPushButton buttonadd( &frame);
+    QPixmap pixmap1(corepath + "icons/addicon.jpg");
+    qDebug()<< corepath + "icons/addicon.jpg";
+    QIcon icon(pixmap1);
+    buttonadd.setIcon(icon);
+    buttonadd.setIconSize(QSize(107,107));
+    buttonadd.setToolTip("Add File");
     buttonadd.setGeometry(0,0,107,107);
+
+
 
     QObject::connect(&buttonadd,&QPushButton::clicked,[&](){
     qDebug()<< "kek";
@@ -64,12 +81,21 @@ int main(int argc, char *argv[])
                     "All files (*.*)"
                     );
         list->addItem(filename);
+        QFile* file = new QFile(filename);
+        totalsum = totalsum + file->size();
+        file->close();
         count++;
         list->show();
     });
 
     //CLEARBUTTON
-    QPushButton buttonclear("Clear", &frame);
+    QPushButton buttonclear(&frame);
+    QPixmap pixmap3(corepath + "icons/clearicon.jpg");
+    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QIcon icon3(pixmap3);
+    buttonclear.setIcon(icon3);
+    buttonclear.setIconSize(QSize(107,107));
+    buttonclear.setToolTip("Clear all");
     buttonclear.setGeometry(214,0,107,107);
 
     QObject::connect(&buttonclear,&QPushButton::clicked,[&](){
@@ -77,24 +103,42 @@ int main(int argc, char *argv[])
     });
 
     //UNtar
-    QPushButton buttonuntar("UnTAR",&frame);
+    QPushButton buttonuntar(&frame);
+    QPixmap pixmap6(corepath + "icons/untaricon.jpg");
+   // qDebug()<< corepath + "icons/deleteicon.jpg";
+    QIcon icon6(pixmap6);
+    buttonuntar.setIcon(icon6);
+    buttonuntar.setIconSize(QSize(107,107));
+    buttonuntar.setToolTip("Untar Files");
     buttonuntar.setGeometry(428,0,107,107);
 
     QObject::connect(&buttonuntar,&QPushButton::clicked,[&](){
         QString archname1 = QFileDialog::getOpenFileName(
                     nullptr,
-                    "Open File",
+                    "Open file",
                     path,
-                    "cTAR files (*.ctar*)"
+                    "ctar files (*.ctar*)"
                     );
         if(archname1 != NULL){
            // cryptotar target;
-            QString targetpath = QFileDialog::getExistingDirectory(nullptr,"Choose Dir",QDir::homePath());
+            QFileDialog dirpath;
+           // dirpath.setAcceptMode(QFileDialog::AcceptOpen);
+            setenv("QT_X11_NO_MITSHM","1",1);
+
+            QString targetpath = dirpath.getExistingDirectory(nullptr,"Choose Dir",QDir::homePath());
 
             if(targetpath != NULL){
                 targetpath += "/";
             qDebug() << targetpath;
-            cryptotar tarEx(archname1.toStdString(), targetpath.toStdString());
+            cryptotar tarEx;
+            QProgressBar bar;
+            bar.setRange(0,archname1.size());
+                        bar.setValue(bytesbts);
+                        bar.show();
+            tarEx.globalProgressCallback = customprogress;
+            tarEx.unpackTar(archname1.toStdString(), targetpath.toStdString());
+
+
 
             QMessageBox msgCom;
             msgCom.setText("Untared!");
@@ -126,20 +170,36 @@ int main(int argc, char *argv[])
 
     });
 
-    QPushButton buttonexit("Exit",&frame);
+    QPushButton buttonexit(&frame);
+    QPixmap pixmap7(corepath + "icons/exiticon.jpg");
+   // qDebug()<< corepath + "icons/deleteicon.jpg";
+    QIcon icon7(pixmap7);
+    buttonexit.setIcon(icon7);
+    buttonexit.setIconSize(QSize(107,107));
+    buttonexit.setToolTip("Exit");
     buttonexit.setGeometry(535,0,107,107);
     QObject::connect(&buttonexit,&QPushButton::clicked,[&](){
         app.exit();
     });
 
 
-    QPushButton buttondelete("Delete", &frame);
+    QPushButton buttondelete( &frame);
+    QPixmap pixmap2(corepath + "icons/deleteicon.jpg");
+    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QIcon icon2(pixmap2);
+    buttondelete.setIcon(icon2);
+    buttondelete.setIconSize(QSize(107,107));
+    buttondelete.setToolTip("Delete File");
     buttondelete.setGeometry(107,0,107,107);
     QObject::connect(&buttondelete,&QPushButton::clicked,[&](){
         flag++;
         if(flag == 1){
             buttondelete.setStyleSheet("background-color: rgb(180,180,180)");
     QObject::connect(list, &QListWidget::itemClicked, [&](QListWidgetItem *item){
+        QString filenamedelete = item->text();
+        QFile* filedelete = new QFile(filenamedelete);
+        totalsum = totalsum - filedelete->size();
+        filedelete->close();
             delete item;
         });
         }
@@ -150,7 +210,13 @@ int main(int argc, char *argv[])
         }
     });
 
-    QPushButton buttontar("TAR", &frame);
+    QPushButton buttontar(&frame);
+    QPixmap pixmap5(corepath + "icons/taricon.jpg");
+    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QIcon icon5(pixmap5);
+    buttontar.setIcon(icon5);
+    buttontar.setIconSize(QSize(107,107));
+    buttontar.setToolTip("Tar Files");
     buttontar.setGeometry(321,0,107,107);
     QObject::connect(&buttontar,&QPushButton::clicked,[&](){
         if(list->count() == 0){

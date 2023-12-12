@@ -1,0 +1,4 @@
+/home/asd/kurs/hub/cryptotar/CMakeFiles/cryptotar.dir
+/home/asd/kurs/hub/cryptotar/CMakeFiles/test_cryptotarlib.dir
+/home/asd/kurs/hub/cryptotar/CMakeFiles/edit_cache.dir
+/home/asd/kurs/hub/cryptotar/CMakeFiles/rebuild_cache.dir
