@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
 
     QObject::connect(&buttonadd,&QPushButton::clicked,[&](){
-    qDebug()<< "kek";
+
         QString filename = QFileDialog::getOpenFileName(
                     nullptr,
                     "Open File",
@@ -131,10 +131,10 @@ int main(int argc, char *argv[])
                 targetpath += "/";
            // qDebug() << targetpath;
             cryptotar tarEx;
-            QProgressBar bar;
-            bar.setRange(0,archname1.size());
-                        bar.setValue(bytesbts);
-                        bar.show();
+          //  QProgressBar bar;
+           // bar.setRange(0,archname1.size());
+           //             bar.setValue(bytesbts);
+          //              bar.show();
             tarEx.globalProgressCallback = customprogress;
             tarEx.unpackTar(archname1.toStdString(), targetpath.toStdString());
 
