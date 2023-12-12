@@ -76,7 +76,7 @@ int  main(int argc, char *argv[]){
 
 	if ( (has_c == false && has_u == false) || has_h == true ) { 
 
-		has_c == false; has_u == false; has_f == false; has_o == false;
+		has_c = false; has_u = false; has_f = false; has_o = false;
 
 		std::cout << "You can use and should flags: -c (--compress) use for compress file(s)  -f (--files) and file(s) name(s)  -o (--output) and output file" << std::endl;
 		std::cout << "You can use and should flags: -u (--unpack) use fo unpack file  -f (--files) and name only one file  -o (--output) and output directory for unpacking" << std::endl; 
