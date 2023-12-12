@@ -95,7 +95,7 @@ int  main(int argc, char *argv[]){
 
 	//ctar_creating_with_vector
 	
-	if ( has_c == true && has_f == true && has_o == true ) { cryptotar cr(output_file_name + ctar, paths); cr.closeTar();}
+	if ( has_c == true && has_f == true && has_o == true ) { cryptotar cr(output_file_name + ctar, paths); }
 	
 
 
@@ -105,10 +105,12 @@ int  main(int argc, char *argv[]){
 
 		cryptotar tarEx;
 
-		if ( has_o == true ) tarEx.unpackTar(unpack_ctar, output_file_name);
+		if ( has_o == true ){
+			output_file_name.push_back('/');
+			tarEx.unpackTar(unpack_ctar, output_file_name);
+		}
 		else tarEx.unpackTar(unpack_ctar, ".");
 
-		tarEx.closeTar();
 	}
 
 	return 0;
