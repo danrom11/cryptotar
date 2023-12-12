@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     //ADDBUTTON
 
     QPushButton buttonadd( &frame);
-    QPixmap pixmap1("icons/addicon.jpg");
-    qDebug()<< corepath + "icons/addicon.jpg";
+    QPixmap pixmap1("/icons/addicon.jpg");
+   // qDebug()<< corepath + "icons/addicon.jpg";
     QIcon icon(pixmap1);
     buttonadd.setIcon(icon);
     buttonadd.setIconSize(QSize(107,107));
@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
 
     //CLEARBUTTON
     QPushButton buttonclear(&frame);
-    QPixmap pixmap3("icons/clearicon.jpg");
-    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QPixmap pixmap3("/icons/clearicon.jpg");
+   // qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon3(pixmap3);
     buttonclear.setIcon(icon3);
     buttonclear.setIconSize(QSize(107,107));
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
     //UNtar
     QPushButton buttonuntar(&frame);
-    QPixmap pixmap6("icons/untaricon.jpg");
+    QPixmap pixmap6("/icons/untaricon.jpg");
    // qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon6(pixmap6);
     buttonuntar.setIcon(icon6);
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     });
 
     QPushButton buttonexit(&frame);
-    QPixmap pixmap7("icons/exiticon.jpg");
+    QPixmap pixmap7("/icons/exiticon.jpg");
    // qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon7(pixmap7);
     buttonexit.setIcon(icon7);
@@ -184,8 +184,8 @@ int main(int argc, char *argv[])
 
 
     QPushButton buttondelete( &frame);
-    QPixmap pixmap2("icons/deleteicon.jpg");
-    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QPixmap pixmap2("/icons/deleteicon.jpg");
+    //qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon2(pixmap2);
     buttondelete.setIcon(icon2);
     buttondelete.setIconSize(QSize(107,107));
@@ -211,8 +211,8 @@ int main(int argc, char *argv[])
     });
 
     QPushButton buttontar(&frame);
-    QPixmap pixmap5("icons/taricon.jpg");
-    qDebug()<< corepath + "icons/deleteicon.jpg";
+    QPixmap pixmap5("/icons/taricon.jpg");
+  //  qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon5(pixmap5);
     buttontar.setIcon(icon5);
     buttontar.setIconSize(QSize(107,107));
