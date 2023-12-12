@@ -63,7 +63,7 @@ int cryptotar::closeTar(){
         tarFile = nullptr;
         return 1;
     }
-    DEBUG_PRINT_ERR("TAR file not creared%s\n", "");
+    DEBUG_PRINT_ERR("TAR file not created%s\n", "");
     return 0;
 }
 
