@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <fstream>
 #include <getopt.h>
 #include <vector>
@@ -11,7 +12,7 @@ int  main(int argc, char *argv[]){
 	bool has_h = false, has_u = false, has_c = false, has_f = false, has_o = false;
 
 	std::vector <std::string> paths;
-	char* output_file_name; char*  unpack_ctar;
+	std::string output_file_name, ctar = ".ctar";  char*  unpack_ctar;
 
 	int r, option_index = 0;
 
@@ -94,7 +95,7 @@ int  main(int argc, char *argv[]){
 
 	//ctar_creating_with_vector
 	
-	if ( has_c == true && has_f == true && has_o == true ) { cryptotar cr(output_file_name, paths); cr.closeTar();}
+	if ( has_c == true && has_f == true && has_o == true ) { cryptotar cr(output_file_name + ctar, paths); cr.closeTar();}
 	
 
 
