@@ -126,39 +126,39 @@ Basic constructors and methods of the `cryptotar` class:
 
 
  ```cpp 
-        cryptotar() = default;
-    cryptotar(std::string archiveName);
-    cryptotar(std::string archiveName, std::vector<std::string>& paths);
+ cryptotar() = default;
+ cryptotar(std::string archiveName);
+ cryptotar(std::string archiveName, std::vector<std::string>& paths);
 
-    cryptotar(std::string pathToArhive, std::string ExtractToPath);
+ cryptotar(std::string pathToArhive, std::string ExtractToPath);
 
-    ~cryptotar();
+ ~cryptotar();
 
-    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize, char* fileName){
-        #ifdef DEBUG
-            double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
-            std::cout << "File: " << fileName << " read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
-        #endif
-    };
+ ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize, char* fileName){
+     #ifdef DEBUG
+         double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
+         std::cout << "File: " << fileName << " read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+     #endif
+ };
 
-    TarHeaderCallback globalTarHeaderCallback = [](TarHeader header, size_t size, char* path){
-        #ifdef DEBUG
-            std::cout << "Header: " << header.fileName.data() << " Size: " << size << " Path: " << path << std::endl;             
-        #endif
-    };
+TarHeaderCallback globalTarHeaderCallback = [](TarHeader header, size_t size, char* path){
+     #ifdef DEBUG
+         std::cout << "Header: " << header.fileName.data() << " Size: " << size << " Path: " << path << std::endl;             
+     #endif
+};
 
-    int addPath(std::string& path);
-    
-    int openTar(std::string path);
-    int closeTar();
+int addPath(std::string& path);
 
-    int unpackTar(std::string pathToArhive, std::string ExtractToPath);
+int openTar(std::string path);
+int closeTar();
 
-    int setBlockSizeWrite(size_t bytes);
+int unpackTar(std::string pathToArhive, std::string ExtractToPath);
 
-    void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey);
-    void disableCryptoModule();
- ```
+int setBlockSizeWrite(size_t bytes);
+
+void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey);
+void disableCryptoModule();
+```
 
 - `cryptotar() = default;` - Default constructor.
 
