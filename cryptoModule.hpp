@@ -1,5 +1,7 @@
 #include <unistd.h>
 
+#define VERSION_CRYPTO_MODULE "01"
+
 class cryptoModule {
 public:
     virtual ~cryptoModule() = default;

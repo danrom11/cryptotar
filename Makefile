@@ -1,4 +1,4 @@
-all:	xor 
+all:	xor 	rc4 
 
 xor:
 	@echo "XOR: Compilation"
