@@ -12,67 +12,59 @@ class crypto : public cryptoModule{
 public:
     void* cryptoData(unsigned char* data, size_t size) override {
         unsigned char* cipherText = new unsigned char[size];
-        RC4(this->key, (char*)data, cipherText);
+        
+        unsigned char S[N];
+
+        initialize(S, (unsigned char*)this->key, this->sizeKey);
+
+        RC4(S, data, cipherText, size);
+
         return cipherText;
     }
 
     void* uncryptoData(unsigned char* data, size_t size) override{
         unsigned char* cipherText = new unsigned char[size];
-        RC4(this->key, (char*)data, cipherText);
+        
+        unsigned char S[N];
+
+        initialize(S, (unsigned char*)this->key, this->sizeKey);
+
+        RC4(S, data, cipherText, size);
+
         return cipherText;
     }
 
 private:
-    void swap(unsigned char *a, unsigned char *b) {
-        int tmp = *a;
-        *a = *b;
-        *b = tmp;
-    }
-
-    int KSA(char *key, unsigned char *S) {
-
-        int len = strlen(key);
-        int j = 0;
-
-        for(int i = 0; i < N; i++)
+    void initialize(unsigned char S[], const unsigned char key[], int key_length) {
+        for (int i = 0; i < N; i++) {
             S[i] = i;
-
-        for(int i = 0; i < N; i++) {
-            j = (j + S[i] + key[i % len]) % N;
-
-            swap(&S[i], &S[j]);
         }
 
-        return 0;
+        unsigned char j = 0;
+        for (int i = 0; i < N; i++) {
+            j = (j + S[i] + key[i % key_length]) % N;
+            unsigned char temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
+        }
     }
 
-    int PRGA(unsigned char *S, char *plaintext, unsigned char *ciphertext) {
+    // Функция генерации псевдослучайной последовательности
+    void RC4(unsigned char S[], const unsigned char *plaintext, unsigned char *ciphertext, int length) {
+        unsigned char i = 0;
+        unsigned char j = 0;
 
-        int i = 0;
-        int j = 0;
-
-        for(size_t n = 0, len = strlen(plaintext); n < len; n++) {
+        for (size_t k = 0; k < length; k++) {
             i = (i + 1) % N;
             j = (j + S[i]) % N;
 
-            swap(&S[i], &S[j]);
-            int rnd = S[(S[i] + S[j]) % N];
+            unsigned char temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
 
-            ciphertext[n] = rnd ^ plaintext[n];
-
+            unsigned char rnd = S[(S[i] + S[j]) % N];
+            ciphertext[k] = rnd ^ plaintext[k];
         }
-
-        return 0;
-    }
-
-    int RC4(char *key, char *plaintext, unsigned char *ciphertext) {
-
-        unsigned char S[N];
-        KSA(key, S);
-
-        PRGA(S, plaintext, ciphertext);
-
-        return 0;
     }
 };
 
