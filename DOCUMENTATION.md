@@ -212,7 +212,7 @@ void disableCryptoModule();
     tarEx.unpackTar("arh.ctar", ".");
     ```
 
-- `ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize)` -A pointer to the callback function, which you will help to specify your function for returning values during file locking and unpacking.
+- `ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize, char* fileName)` -A pointer to the callback function, which you will help to specify your function for returning values during file locking and unpacking.
   + Example 5.
  
     ```cpp
