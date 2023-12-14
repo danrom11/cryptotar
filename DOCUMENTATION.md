@@ -126,7 +126,7 @@ Basic constructors and methods of the `cryptotar` class:
 
 
  ```cpp 
-    cryptotar() = default;
+        cryptotar() = default;
     cryptotar(std::string archiveName);
     cryptotar(std::string archiveName, std::vector<std::string>& paths);
 
@@ -134,19 +134,30 @@ Basic constructors and methods of the `cryptotar` class:
 
     ~cryptotar();
 
-    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize){
+    ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize, char* fileName){
         #ifdef DEBUG
             double progress = static_cast<double>(bytesRead) / fileSize * 100.0;
-            std::cout << "Read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+            std::cout << "File: " << fileName << " read: " << bytesRead << " out of " << fileSize << " bytes (" << progress << "%)" << std::endl;
+        #endif
+    };
+
+    TarHeaderCallback globalTarHeaderCallback = [](TarHeader header, size_t size, char* path){
+        #ifdef DEBUG
+            std::cout << "Header: " << header.fileName.data() << " Size: " << size << " Path: " << path << std::endl;             
         #endif
     };
 
     int addPath(std::string& path);
+    
+    int openTar(std::string path);
     int closeTar();
 
     int unpackTar(std::string pathToArhive, std::string ExtractToPath);
 
     int setBlockSizeWrite(size_t bytes);
+
+    void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey);
+    void disableCryptoModule();
  ```
 
 - `cryptotar() = default;` - Default constructor.
@@ -201,7 +212,7 @@ Basic constructors and methods of the `cryptotar` class:
     tarEx.unpackTar("arh.ctar", ".");
     ```
 
-- `ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize)` - A pointer to the callback function, to which you will help specify your function to return the values of the file unpacking progress.
+- `ProgressCallback globalProgressCallback = [](size_t bytesRead, size_t fileSize)` -A pointer to the callback function, which you will help to specify your function for returning values during file locking and unpacking.
   + Example 5.
  
     ```cpp
@@ -216,6 +227,8 @@ Basic constructors and methods of the `cryptotar` class:
         return 0;
     }
     ```
+
+- `TarHeaderCallback globalTarHeaderCallback = [](TarHeader header, size_t size, char* path)` - A pointer to a callback function that is called when unpacking a file, and passes the header of the object (file/folder) where you can already give the data you need, such as hash, size, creation time, changes, and so on...
 
 - `int setBlockSizeWrite(size_t bytes);` - The method that sets the number of bytes in the block when unpacking and writing to the archive (By default - 4096).
   + Example 6.
@@ -233,6 +246,25 @@ Basic constructors and methods of the `cryptotar` class:
         return 0;
     }
     ```
+
+- `void setCryptoModule(std::string pathToModule, std::string key, size_t sizeKey)` - A method that allows you to install a crypto module with which data will be encrypted during packaging and decrypted during unpacking.
+  + Example 7.
+ 
+    ```cpp
+    std::vector<std::string> paths;
+    paths.push_back("file1");
+    paths.push_back("file2");
+    
+    cryptotar tar("myTar.ctar");
+    std::string key = "mykey123";
+    tar.setCryptoModule("rc4.cryptomodule", key, key.size());
+
+    tar.addPath(paths.at(0));
+    tar.addPath(paths.at(1));
+    tar.closeTar(); 
+    ```
+
+- `void disableCryptoModule()` - The method that disables the cryptomodule.
 
 
 
