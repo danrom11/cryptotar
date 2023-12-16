@@ -7,22 +7,55 @@
 #include "cryptotarlib.hpp"
 
 
-int  main(int argc, char *argv[]){
 
-	bool has_h = false, has_u = false, has_c = false, has_f = false, has_o = false;
+void customProgress(size_t bytesRead, size_t fileSize, char* fileName){ 
+
+	double Read = (double) bytesRead, Size = (double) fileSize, finishingPercentage = Read/Size*100;
+
+	std::cout << "File: "  << fileName << "\tComplet on " << Read/1024 << "Kb of " << fileSize/1024 << "Kb" << "\t(" << finishingPercentage  << "%)"  << std::endl;
+
+}
+/*
+char readMethod(){
+
+	std::cout << "Enter number: ";
+	char method;
+	std::cin >> method;
+	if (method == '1' || method == '2') { if (method == '1') std::cout << "You choosed: 1.rc4" << std::endl; else std::cout << "You choosed: 2.xor" << std::endl; }
+       	else { std::cout << "You must enter only method number!!!\n" << std::endl; readMethod(); }
+	return method;
+}
+*/
+std::string readKey(){
+
+	std::cout << "\nEnter key: ";
+	std::string key;
+	std::cin >> key;
+	std::cout << "You entered: " << key << std::endl << std::endl;
+	return key;
+}
+
+int main(int argc, char *argv[]){
+
+	bool has_h = false, has_u = false, has_d = false, has_c = false, has_m = false, has_n = false, has_f = false, has_o = false;
 
 	std::vector <std::string> paths;
-	std::string output_file_name, ctar = ".ctar";  char*  unpack_ctar;
-
+	std::string output_file_name, ctar = ".ctar", methodPath, key;  
+	
+	char*  unpack_ctar;
+	
 	int r, option_index = 0;
 
 
-	const char *short_options = "hu:cf:o:";
+	const char *short_options = "hu:dcnm:f:o:";
 
 	const struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"unpack", required_argument, NULL, 'u'},
+		{"decrypt", no_argument, NULL, 'd'},
 		{"compress", no_argument, NULL, 'c'},
+		{"method", required_argument, NULL, 'm'},
+		{"encrypt", no_argument, NULL, 'n'},
 		{"files", required_argument, NULL, 'f'},
 		{"output", required_argument, NULL, 'o'},
 		{NULL, 0, NULL, 0}
@@ -39,21 +72,40 @@ int  main(int argc, char *argv[]){
 			case 'u':
 				has_u = true;
 				if (optarg != NULL){
-					unpack_ctar = argv[optind-1];
+					std::ifstream file_unpack (argv[optind-1]);
+					if (!file_unpack) { std::cout << "file is not exists" << std::endl; return -1; }
+					else unpack_ctar = argv[optind-1];
 				}
 				break;
 
+			case 'd':
+				has_d = true;
+				break;
 
 			case 'c':
 				has_c = true;
+				break;
+
+			case 'n':
+				has_n = true;
+				break;
+
+			case 'm':
+				has_m = true;
+				if (optarg != NULL){
+					std::ifstream file_method (argv[optind-1]);
+					if (!file_method) { std::cout << "file is not exists" << std::endl; return -1; }
+					else methodPath = argv[optind-1];
+				}
 				break;
 
 			case 'f':
 				has_f = true;
 				if (optarg != NULL){
 					for (int i = optind - 1; i < argc && *argv[i] != '-'; i++) { std::ifstream file (argv[i]);
-						if (!file)  { std::cout << "file is not exists" << std::endl; return 1; }
-						else paths.push_back(argv[i]); }
+						if (!file)  { std::cout << "file is not exists" << std::endl; return -1; }
+						else paths.push_back(argv[i]); 
+					}
 				}
 				break;
 
@@ -67,48 +119,82 @@ int  main(int argc, char *argv[]){
 	}
 
 
+
+
 	//errors
-	
-
-
+		
 	if ( (has_c == false && has_u == false) || has_h == true ) { 
 
-		has_c = false; has_u = false; has_f = false; has_o = false;
+		has_u = false; has_d = false; has_c = false; has_n == false; has_f = false; has_o = false;
 
+		std::cout << "If you want compress your file(s):" << std::endl;
 		std::cout << "You can use and should flags: -c (--compress) use for compress file(s)  -f (--files) and file(s) name(s)  -o (--output) and output file" << std::endl;
-		std::cout << "You can use and should flags: -u (--unpack) use fo unpack file  -f (--files) and name only one file  -o (--output) and output directory for unpacking" << std::endl; 
-	
+		std::cout << "OR ( if you want encrypt your archive ):" << std::endl;
+		std::cout << "You can use -c (--compress)  -n (--encrypt) for encrypt your archive  -m (--method) and path to encrypt method  -f (--files)  -o (--output)" <<std::endl;
+		std::cout << "If you want unpack your ctar archive:" << std::endl;
+		std::cout << "You can use and should flags: -u (--unpack) use fo unpack file  -f (--files) and name only one file  -o (--output) and output directory for unpacking, without flag -o your archive unpack in current directory" << std::endl; 
+		std::cout << "OR ( if your archive encrypt ):" << std::endl;
+		std::cout << "You can use -u (--unpack)  -d (--decrypt) for decrypt your encrypt archive" << std::endl;
+
 	} else if ( has_c == true ) {
 
-		if ( has_f == false ) { std::cout << "You should use flag -f (--files) and name(s) file(s)" << std::endl; return -1;}
+		if ( has_d == true ) { std::cout << "You cant use flag -d (--decrypt) with flag -c (--compress)" << std::endl; return -1;
+		
+		} else if ( has_f == false ) { std::cout << "You should use flag -f (--files) and name(s) file(s)" << std::endl; return -1;
+		
+		} else if ( has_o == false ) { std::cout << "You should use flag -o (--output) and name output file" << std::endl; return -1;
+		
+		} else if ( has_n == false )  std::cout << "You can use -e (--encrypt) for encrypt your ctar archive" << std::endl;
 
-		else if ( has_o == false ) { std::cout << "You should use flag -o (--output) and name output file" << std::endl; return -1;}
+		else if ( has_n == true ) { if ( has_m == true ) key = readKey(); else { std::cout << "You cant use flag -n (--encrypt) without flag -m (--method) with argument path to encrypt method" << std::endl; return -1;} }
 
 	} else if ( has_u == true ) {
 
-		if ( has_f == true ) { std::cout << "You cant use flag -f (--files) with flag -u (--compress)" << std::endl; return -1;}
+		if ( has_f == true ) { std::cout << "You cant use flag -f (--files) with flag -u (--unpack)" << std::endl; return -1;
+		
+		} else if ( has_m ) { std::cout << "You can use flag -m (--method) with flag -u (--unpack)" << std::endl; return -1;
 
-		else if ( has_o == false )  std::cout << "You can use -o (--output) for manually entering the directory for unpacking" << std::endl; 
+		} else if ( has_o == false )  std::cout << "You can use -o (--output) for manually entering the directory for unpacking" << std::endl; 
+
+		else if ( has_d == false ) std::cout << "You can use -d (--decrypt), if your archive encrypt" << std::endl;
+
+		
 
 	} else { std::cout << has_c << "|" <<  has_u << std::endl; std::cout << "You cant use flags -c (--compress) and -u (--unpack) together" << std::endl; return -1;}
 
 
-	//ctar_creating_with_vector
+	//pack
 	
-	if ( has_c == true && has_f == true && has_o == true ) { cryptotar cr(output_file_name + ctar, paths); }
-	
+	if ( has_c == true && has_f == true && has_o == true ) { 
+		
+		cryptotar newTar(output_file_name + ctar);
 
+	       	newTar.globalProgressCallback = customProgress; 
+
+		if ( has_n == true && has_m == true ) newTar.setCryptoModule(methodPath, key, key.size());
+
+		while ( paths.empty() != true ) { newTar.addPath(paths.back()); paths.pop_back(); }
+
+		newTar.closeTar();
+	}		
+	
 
 	//unpack
-	
+
 	if ( has_u == true ) {
 
 		cryptotar tarEx;
 
-		if ( has_o == true ){
+		tarEx.globalProgressCallback = customProgress;
+
+		if ( has_d == true ) tarEx.disableCryptoModule();
+
+		if ( has_o == true ) {
+			
 			output_file_name.push_back('/');
 			tarEx.unpackTar(unpack_ctar, output_file_name);
 		}
+
 		else tarEx.unpackTar(unpack_ctar, ".");
 
 	}
