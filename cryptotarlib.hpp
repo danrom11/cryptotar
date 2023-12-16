@@ -105,7 +105,9 @@ private:
 
     int addPathTable(std::string& path);
     std::unordered_map<std::string, int> filePaths; // Хэш-таблица для хранения путей и значений (1 или другого)
-   
+  
+    time_t convertHexToTime(const std::array<char, 12>& hexTime);
+
     bool flag_absolute_names = false;
     bool flag_strip_path = false;
     std::string strip_path;

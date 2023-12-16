@@ -684,6 +684,21 @@ int cryptotar::unpackTar(std::string pathToArhive, std::string ExtractToPath){
                 return 0;
             }
             int status = readFileWithProgress(file, fileExtract, size, header);
+
+
+            time_t timeValue1 = convertHexToTime(header.atime);
+            time_t timeValue2 = convertHexToTime(header.ctime);
+
+            struct timespec times[2];
+            times[0].tv_sec = timeValue1;
+            times[0].tv_nsec = 0; 
+            times[1].tv_sec = timeValue2;
+            times[1].tv_nsec = 0;
+
+            if (futimens(fileno(fileExtract), times) != 0) {
+                DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: Failed set time for file: %s\n", header.fileName.data());             
+            }
+
             fclose(fileExtract);
 
             if(!status){
@@ -874,6 +889,18 @@ std::string cryptotar::findFromTo(std::string& str, std::string from, std::strin
         DEBUG_PRINT_ERR("CRYPTOTAR_ERROR: 'size=' not found in the string%s\n", "");
     }
     return str;
+}
+
+
+time_t cryptotar::convertHexToTime(const std::array<char, 12>& hexTime){
+    std::stringstream ss;
+    for (auto c : hexTime) {
+        if (c != '\0') ss << c;
+    }
+
+    time_t timeValue;
+    ss >> std::hex >> timeValue;
+    return timeValue;
 }
 
 
