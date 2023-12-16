@@ -217,6 +217,7 @@ QFileDialog fdialog;
                // bar.setVisible(false);
             list->clear();
              alreadyread = 0;
+             app.exit();
 
             }
             else{
