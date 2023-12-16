@@ -16,6 +16,8 @@ LIBS += -L. -lcryptotar
 QT += widgets
 QT += network
 
+QT += core
+CONFIG += c++17
 # Input
 SOURCES += \
     CryptoTarGUI.cpp

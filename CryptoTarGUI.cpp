@@ -26,13 +26,66 @@
 #include <QFile>
 #include <QProgressBar>
 #include <QTimer>
-using namespace std;
-string special = "";
+#include <QThread>
+#include <QFileInfo>
+
+
 qint64 bytesbts = 0;
-void customprogress(size_t bytesRead,size_t filesize){
-    bytesbts = bytesbts + static_cast<qint64>(bytesRead);
-    qDebug()<< bytesRead;
+using namespace std;
+double zxckek = 100;
+int c = -1;
+int progress = 0;
+qint64 bytesprom;
+qint64 filesize;
+qint64 alreadyread = 0;
+long prom = 0;
+qint64 archsize1;
+double currentprogress;
+QProgressBar *globalbar;
+
+QString unarchname;
+void customprogress(size_t bytesRead,size_t fileSize){
+    if(alreadyread > static_cast<long>(bytesRead)){
+        alreadyread = alreadyread + (static_cast<long>(bytesRead) - prom);
+        prom = bytesRead;
+    }
+    else{
+    alreadyread = alreadyread + (static_cast<long>(bytesRead) - alreadyread);
+    }
+    progress = (static_cast<qint64>(alreadyread)/static_cast<float>(archsize1))* 100;
+    if(progress == 99){
+        globalbar->setVisible(false);
+    }
+
+    globalbar->setValue(progress);
+
+    qDebug()<< progress;
+
+
 }
+
+class Worker : public QThread{
+
+//Q_OBJECT
+public:
+    Worker(const string& arg1,const string& arg2)
+        : m_arg1(arg1),m_arg2(arg2)
+    {}
+
+    void run() {
+       cryptotar TarEx;
+       TarEx.globalProgressCallback = customprogress;
+            TarEx.unpackTar(m_arg1, m_arg2);
+    }
+private:
+string m_arg1;
+string m_arg2;
+
+};
+string special = "";
+
+int specbytes = 0;
+
 
 int main(int argc, char *argv[])
 {
@@ -111,9 +164,9 @@ int main(int argc, char *argv[])
     buttonuntar.setIconSize(QSize(107,107));
     buttonuntar.setToolTip("Untar Files");
     buttonuntar.setGeometry(428,0,107,107);
-
+QFileDialog fdialog;
     QObject::connect(&buttonuntar,&QPushButton::clicked,[&](){
-        QString archname1 = QFileDialog::getOpenFileName(
+        QString archname1 = fdialog.getOpenFileName(
                     nullptr,
                     "Open file",
                     path,
@@ -121,7 +174,9 @@ int main(int argc, char *argv[])
                     );
         if(archname1 != NULL){
            // cryptotar target;
+            fdialog.close();
             QFileDialog dirpath;
+
            // dirpath.setAcceptMode(QFileDialog::AcceptOpen);
             setenv("QT_X11_NO_MITSHM","1",1);
 
@@ -129,24 +184,40 @@ int main(int argc, char *argv[])
 
             if(targetpath != NULL){
                 targetpath += "/";
-           // qDebug() << targetpath;
-            cryptotar tarEx;
-          //  QProgressBar bar;
-           // bar.setRange(0,archname1.size());
-           //             bar.setValue(bytesbts);
-          //              bar.show();
-            tarEx.globalProgressCallback = customprogress;
-            tarEx.unpackTar(archname1.toStdString(), targetpath.toStdString());
+                dirpath.reject();
+                string archnamestr = archname1.toStdString();
+                string targetpathstr = targetpath.toStdString();
+
+            unarchname = archname1;
+            QFileInfo fileinf(unarchname);
+            archsize1 = fileinf.size();
+            QProgressBar bar;
+            bar.setRange(0,100);
+            bar.setValue(progress);
+            globalbar = &bar;
+            bar.show();
 
 
+            Worker* worker = new Worker(archnamestr,targetpathstr);
+            worker->start();
 
+
+            //tarEx.unpackTar(, targetpath.toStdString());
+                int i =0;
             QMessageBox msgCom;
-            msgCom.setText("Untared!");
-            msgCom.addButton(QMessageBox::Ok);
-            msgCom.setDefaultButton(QMessageBox::Ok);
-            msgCom.setFixedWidth(900);
-            msgCom.exec();
+                            msgCom.setText("Untaring in progress!");
+                            msgCom.setStandardButtons(QMessageBox::Ok);
+                            msgCom.setButtonText(QMessageBox::Ok, "Stop");
+                          //  msgCom.setFixedWidth(900);
+                            msgCom.exec();
+
+
+
+
+               // bar.setVisible(false);
             list->clear();
+             alreadyread = 0;
+
             }
             else{
             QMessageBox msgError;
@@ -269,3 +340,4 @@ int main(int argc, char *argv[])
 
     return app.exec();
 }
+
