@@ -47,15 +47,15 @@ int main(int argc, char *argv[]){
 	int r, option_index = 0;
 
 
-	const char *short_options = "hu:dcnm:f:o:";
+	const char *short_options = "hcu:ndm:f:o:";
 
 	const struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
-		{"unpack", required_argument, NULL, 'u'},
-		{"decrypt", no_argument, NULL, 'd'},
 		{"compress", no_argument, NULL, 'c'},
-		{"method", required_argument, NULL, 'm'},
+		{"unpack", required_argument, NULL, 'u'},
 		{"encrypt", no_argument, NULL, 'n'},
+		{"decrypt", no_argument, NULL, 'd'},
+		{"method", required_argument, NULL, 'm'},
 		{"files", required_argument, NULL, 'f'},
 		{"output", required_argument, NULL, 'o'},
 		{NULL, 0, NULL, 0}
@@ -68,6 +68,8 @@ int main(int argc, char *argv[]){
 			case 'h':
 				has_h = true;
 				break;
+
+
 
 			case 'u':
 				has_u = true;
@@ -121,24 +123,26 @@ int main(int argc, char *argv[]){
 
 
 
-	//errors
+	//logic
 		
 	if ( (has_c == false && has_u == false) || has_h == true ) { 
 
 		has_u = false; has_d = false; has_c = false; has_n == false; has_f = false; has_o = false;
 
-		std::cout << "If you want compress your file(s):" << std::endl;
-		std::cout << "You can use and should flags: -c (--compress) use for compress file(s)  -f (--files) and file(s) name(s)  -o (--output) and output file" << std::endl;
+		std::cout << "\nIf you want compress your file(s):" << std::endl;
+		std::cout << "You can use and should flags: -c (--compress) use for compress file(s)  -f (--files) and file(s) name(s)  -o (--output) and output file\n" << std::endl;
 		std::cout << "OR ( if you want encrypt your archive ):" << std::endl;
-		std::cout << "You can use -c (--compress)  -n (--encrypt) for encrypt your archive  -m (--method) and path to encrypt method  -f (--files)  -o (--output)" <<std::endl;
+		std::cout << "You can use and should flags: -c (--compress)  -n (--encrypt) for encrypt your archive  -m (--method) and path to encrypt method  -f (--files)  -o (--output)\n" <<std::endl;
 		std::cout << "If you want unpack your ctar archive:" << std::endl;
-		std::cout << "You can use and should flags: -u (--unpack) use fo unpack file  -f (--files) and name only one file  -o (--output) and output directory for unpacking, without flag -o your archive unpack in current directory" << std::endl; 
+		std::cout << "You can use and should flags: -u (--unpack) with argumet your ctar archive, use for unpack your ctar archive  -o (--output) and output directory for unpack, else your archive unpack in current directory\n" << std::endl; 
 		std::cout << "OR ( if your archive encrypt ):" << std::endl;
-		std::cout << "You can use -u (--unpack)  -d (--decrypt) for decrypt your encrypt archive" << std::endl;
+		std::cout << "You can use and should flags: -u (--unpack)  -d (--decrypt) for decrypt your encrypt archive  -m (--method) and path to encrypt method -o (--output) else you tar archive unpack in current directory\n" << std::endl;
 
 	} else if ( has_c == true ) {
 
 		if ( has_d == true ) { std::cout << "You cant use flag -d (--decrypt) with flag -c (--compress)" << std::endl; return -1;
+
+		} else if ( has_f == false && has_n == false ) { std::cout << "You can use flag -n (--encrypt) for encrypt your archive or you can skip flag -n (--encrypt) and use flag -f (--flag) with argument(s) path(s) to your file(s)" << std::endl; return -1;
 		
 		} else if ( has_f == false ) { std::cout << "You should use flag -f (--files) and name(s) file(s)" << std::endl; return -1;
 		
@@ -150,15 +154,15 @@ int main(int argc, char *argv[]){
 
 	} else if ( has_u == true ) {
 
-		if ( has_f == true ) { std::cout << "You cant use flag -f (--files) with flag -u (--unpack)" << std::endl; return -1;
+		std::cout << "You must use -d (--decrypt), if your archive encrypt" << std::endl;
+
+		if ( has_n == true ) { std::cout << "You cant use flag -n (--encrypt) with flag -u (--unpack)" << std::endl; return -1;
+ 
+		} else if ( has_f == true ) { std::cout << "You cant use flag -f (--files) with flag -u (--unpack)" << std::endl; return -1;
 		
-		} else if ( has_m ) { std::cout << "You can use flag -m (--method) with flag -u (--unpack)" << std::endl; return -1;
-
-		} else if ( has_o == false )  std::cout << "You can use -o (--output) for manually entering the directory for unpacking" << std::endl; 
-
-		else if ( has_d == false ) std::cout << "You can use -d (--decrypt), if your archive encrypt" << std::endl;
-
-		
+		} else if ( has_d == true ) { if ( has_m == true ) key = readKey(); else { std::cout << "You cant use flag -d (--decrypt) without flag -m (--method) with argument path to encrypt method" << std::endl; return -1;}
+			
+		} else if ( has_o == false )  std::cout << "You can use -o (--output) for manually entering the directory for unpacking" << std::endl; 	
 
 	} else { std::cout << has_c << "|" <<  has_u << std::endl; std::cout << "You cant use flags -c (--compress) and -u (--unpack) together" << std::endl; return -1;}
 
@@ -187,7 +191,7 @@ int main(int argc, char *argv[]){
 
 		tarEx.globalProgressCallback = customProgress;
 
-		if ( has_d == true ) tarEx.disableCryptoModule();
+		if ( has_d == true && has_m == true ) tarEx.setCryptoModule(methodPath, key, key.size());
 
 		if ( has_o == true ) {
 			
