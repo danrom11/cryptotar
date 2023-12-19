@@ -32,36 +32,60 @@
 
 qint64 bytesbts = 0;
 using namespace std;
-double zxckek = 100;
 int c = -1;
 int progress = 0;
-qint64 bytesprom;
+int progress2 = 0;
 qint64 filesize;
 qint64 alreadyread = 0;
+
+qint64 alreadyread2 = 0;
 long prom = 0;
+int progressprom = 0;;
 qint64 archsize1;
 double currentprogress;
+qint64 bytestotar = 0;
+int progressspec = 0;
 QProgressBar *globalbar;
-
+QProgressBar *globalbartar;
 QString unarchname;
+double bytesprom = 0;
+double bytesspec = 0;
+double bytesprom2 = 0;
+double bytesspec2 = 0;
+string cryptokey;
+QString cryptopath;
+string cryptopathstr;
+string cryptokeystr;
+
 void customprogress(size_t bytesRead,size_t fileSize){
-    if(alreadyread > static_cast<long>(bytesRead)){
-        alreadyread = alreadyread + (static_cast<long>(bytesRead) - prom);
-        prom = bytesRead;
+    alreadyread = bytesRead;
+    if(alreadyread != bytesprom){
+        bytesspec = bytesspec + 4096;
     }
-    else{
-    alreadyread = alreadyread + (static_cast<long>(bytesRead) - alreadyread);
-    }
-    progress = (static_cast<qint64>(alreadyread)/static_cast<float>(archsize1))* 100;
+    bytesprom = alreadyread;
+    progress = bytesspec /(static_cast<double>(archsize1)) * 100;
     if(progress == 99){
         globalbar->setVisible(false);
+        alreadyread = 0;
+
     }
+        globalbar->setValue(progress);
 
-    globalbar->setValue(progress);
+}
 
-    qDebug()<< progress;
+void customprogress2(size_t bytesRead,size_t fileSize){
+    alreadyread2 = bytesRead;
+    if(alreadyread2 != bytesprom2){
+        bytesspec2 = bytesspec2 + 4096;
+    }
+    bytesprom2 = alreadyread2;
+    progress2 = bytesspec2 /(static_cast<double>(bytestotar)) * 100;
+    if(progress2 == 100){
+        globalbartar->setVisible(false);
+        alreadyread = 0;
 
-
+    }
+        globalbartar->setValue(progress2);
 }
 
 class Worker : public QThread{
@@ -74,6 +98,10 @@ public:
 
     void run() {
        cryptotar TarEx;
+
+       if(!cryptokeystr.empty()){
+           TarEx.setCryptoModule(cryptopathstr, cryptokeystr, cryptokeystr.length());
+       }
        TarEx.globalProgressCallback = customprogress;
             TarEx.unpackTar(m_arg1, m_arg2);
     }
@@ -82,6 +110,38 @@ string m_arg1;
 string m_arg2;
 
 };
+
+
+
+class Worker2 : public QThread{
+
+//Q_OBJECT
+public:
+    Worker2(const string& arg1,const std::vector<std::string>& arg2)
+        : m_arg1(arg1),m_arg2(arg2)
+    {}
+
+    void run() {
+         cryptotar mytar(m_arg1);
+
+         if(!cryptokeystr.empty()){
+             mytar.setCryptoModule(cryptopathstr, cryptokeystr, cryptokeystr.length());
+         }
+         mytar.globalProgressCallback = customprogress2;
+         for(string path : m_arg2){
+             mytar.addPath(path);
+         }
+            mytar.closeTar();
+    }
+private:
+string m_arg1;
+std::vector<std::string> m_arg2;
+
+};
+
+
+
+
 string special = "";
 
 int specbytes = 0;
@@ -90,8 +150,6 @@ int specbytes = 0;
 int main(int argc, char *argv[])
 {
     int flag = 0;
-    qint64 totalsum = 0;
-    qint64 unsum = 0;
     setenv("QT_X11_NO_MITSHM","1",1);
 
 	QApplication app(argc, argv);
@@ -131,7 +189,7 @@ int main(int argc, char *argv[])
                     );
         list->addItem(filename);
         QFile* file = new QFile(filename);
-        totalsum = totalsum + file->size();
+        bytestotar = bytestotar + file->size();
         file->close();
         count++;
         list->show();
@@ -147,6 +205,7 @@ int main(int argc, char *argv[])
     buttonclear.setGeometry(214,0,107,107);
 
     QObject::connect(&buttonclear,&QPushButton::clicked,[&](){
+        bytestotar = 0;
     list->clear();
     });
 
@@ -168,13 +227,8 @@ QFileDialog fdialog;
                     "ctar files (*.ctar*)"
                     );
         if(archname1 != NULL){
-           // cryptotar target;
             fdialog.close();
             QFileDialog dirpath;
-
-           // dirpath.setAcceptMode(QFileDialog::AcceptOpen);
-            setenv("QT_X11_NO_MITSHM","1",1);
-
             QString targetpath = dirpath.getExistingDirectory(nullptr,"Choose Dir",QDir::homePath());
 
             if(targetpath != NULL){
@@ -191,14 +245,22 @@ QFileDialog fdialog;
             bar.setValue(progress);
             globalbar = &bar;
             bar.show();
+            cryptopath = QFileDialog::getOpenFileName(
+                       nullptr,
+                       "Choose crypto",
+                       cryptopath,
+                       "cryptomodule files (*.cryptomodule*)"
+                       );
+            if(cryptopath != NULL){
+                cryptopathstr = cryptopath.toStdString();
+                QString cryptokey = QInputDialog::getText(nullptr, "Enter key", "Key:");
+                cryptokeystr = cryptokey.toStdString();
 
+            }
 
             Worker* worker = new Worker(archnamestr,targetpathstr);
             worker->start();
 
-
-            //tarEx.unpackTar(, targetpath.toStdString());
-                int i =0;
             QMessageBox msgCom;
                             msgCom.setText("Untaring in progress!");
                             msgCom.setStandardButtons(QMessageBox::Ok);
@@ -207,9 +269,6 @@ QFileDialog fdialog;
                             msgCom.exec();
 
 
-
-
-               // bar.setVisible(false);
             list->clear();
              alreadyread = 0;
              app.exit();
@@ -263,7 +322,7 @@ QFileDialog fdialog;
     QObject::connect(list, &QListWidget::itemClicked, [&](QListWidgetItem *item){
         QString filenamedelete = item->text();
         QFile* filedelete = new QFile(filenamedelete);
-        totalsum = totalsum - filedelete->size();
+        bytestotar = bytestotar - filedelete->size();
         filedelete->close();
             delete item;
         });
@@ -277,7 +336,6 @@ QFileDialog fdialog;
 
     QPushButton buttontar(&frame);
     QPixmap pixmap5(corepath + "/icons/taricon.jpg");
-  //  qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon5(pixmap5);
     buttontar.setIcon(icon5);
     buttontar.setIconSize(QSize(107,107));
@@ -307,16 +365,36 @@ QFileDialog fdialog;
 
       QString archname = QFileDialog::getExistingDirectory(nullptr,"Choose Dir",QDir::homePath());
       QString arname = QInputDialog::getText(nullptr, "Enter the name of tar archieve", "Archname:");
+       cryptopath = QFileDialog::getOpenFileName(
+                  nullptr,
+                  "Choose crypto",
+                  cryptopath,
+                  "cryptomodule files (*.cryptomodule*)"
+                  );
+      QProgressBar bar2;
+      bar2.setRange(0,100);
+      bar2.setValue(progress);
+      globalbartar = &bar2;
+      bar2.show();
 
-      cryptotar tar(archname.toStdString()+"/"+arname.toStdString().append(".ctar"), paths);
+       string archnametar = archname.toStdString()+"/"+arname.toStdString().append(".ctar");
+
+       if(cryptopath != NULL){
+           cryptopathstr = cryptopath.toStdString();
+           QString cryptokey = QInputDialog::getText(nullptr, "Enter key", "Key:");
+           cryptokeystr = cryptokey.toStdString();
+
+       }
+      Worker2* workertar = new Worker2(archnametar, paths);
+      workertar->start();
 
         QMessageBox msgCom;
-        msgCom.setText("Tar created!");
-        msgCom.addButton(QMessageBox::Ok);
-        msgCom.setDefaultButton(QMessageBox::Ok);
-        msgCom.setFixedWidth(300);
+        msgCom.setText("Taring in progress");
+        msgCom.setStandardButtons(QMessageBox::Ok);
+        msgCom.setButtonText(QMessageBox::Ok, "Stop");
         msgCom.exec();
         list->clear();
+        app.exit();
 
        }
 
