@@ -89,7 +89,6 @@ int specbytes = 0;
 
 int main(int argc, char *argv[])
 {
-//QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
     int flag = 0;
     qint64 totalsum = 0;
     qint64 unsum = 0;
@@ -111,20 +110,17 @@ int main(int argc, char *argv[])
     hline.setStyleSheet("background-color: rgb(0,0,0)");
     int count = 0;
    QString corepath =QCoreApplication::applicationDirPath();
-   // corepath.resize(corepath.length() - 29);
-    //ADDBUTTON
+
+
+   //ADDBUTTON
 
     QPushButton buttonadd( &frame);
     QPixmap pixmap1(corepath + "/icons/addicon.jpg");
- //   qDebug()<< corepath + "icons/addicon.jpg";
     QIcon icon(pixmap1);
     buttonadd.setIcon(icon);
     buttonadd.setIconSize(QSize(107,107));
     buttonadd.setToolTip("Add File");
     buttonadd.setGeometry(0,0,107,107);
-
-
-
     QObject::connect(&buttonadd,&QPushButton::clicked,[&](){
 
         QString filename = QFileDialog::getOpenFileName(
@@ -144,7 +140,6 @@ int main(int argc, char *argv[])
     //CLEARBUTTON
     QPushButton buttonclear(&frame);
     QPixmap pixmap3(corepath + "/icons/clearicon.jpg");
-   // qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon3(pixmap3);
     buttonclear.setIcon(icon3);
     buttonclear.setIconSize(QSize(107,107));
@@ -244,7 +239,6 @@ QFileDialog fdialog;
 
     QPushButton buttonexit(&frame);
     QPixmap pixmap7(corepath + "/icons/exiticon.jpg");
-   // qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon7(pixmap7);
     buttonexit.setIcon(icon7);
     buttonexit.setIconSize(QSize(107,107));
@@ -257,7 +251,6 @@ QFileDialog fdialog;
 
     QPushButton buttondelete( &frame);
     QPixmap pixmap2(corepath + "/icons/deleteicon.jpg");
-    //qDebug()<< corepath + "icons/deleteicon.jpg";
     QIcon icon2(pixmap2);
     buttondelete.setIcon(icon2);
     buttondelete.setIconSize(QSize(107,107));
