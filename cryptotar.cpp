@@ -1,18 +1,27 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <ncurses.h>
 #include <getopt.h>
 #include <vector>
 
 #include "cryptotarlib.hpp"
 
-
+int countPercentage = 10, blocks = 0;
 
 void customProgress(size_t bytesRead, size_t fileSize, char* fileName){ 
 
-	double Read = (double) bytesRead, Size = (double) fileSize, finishingPercentage = Read/Size*100;
+	double Read = (double) bytesRead, Size = (double) fileSize; int finishingPercentage = Read/Size*100;
 
-	std::cout << "File: "  << fileName << "\tComplet on " << Read/1024 << "Kb of " << fileSize/1024 << "Kb" << "\t(" << finishingPercentage  << "%)"  << std::endl;
+	//const int Percentage[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}; 
+
+	if ( bytesRead <= 4096 ) std::cout << "File: " << fileName << "\t[";
+
+	if (finishingPercentage == countPercentage ){ std::cout << "=="; countPercentage += 10; if ( countPercentage == 100 ) countPercentage = 10;} /*clear(); printw("%d", Percentage[i]); refresh();*/
+	
+	blocks++;
+
+	if ( bytesRead == fileSize ) { std::cout << "] " << finishingPercentage << "%\nINFO:\nWritenB: " << bytesRead << "\tblocks: " << blocks << std::endl; blocks = 0; }	
 
 }
 /*
@@ -46,7 +55,6 @@ int main(int argc, char *argv[]){
 	
 	int r, option_index = 0;
 
-
 	const char *short_options = "hcu:ndm:f:o:";
 
 	const struct option long_options[] = {
@@ -68,8 +76,6 @@ int main(int argc, char *argv[]){
 			case 'h':
 				has_h = true;
 				break;
-
-
 
 			case 'u':
 				has_u = true;
@@ -170,22 +176,32 @@ int main(int argc, char *argv[]){
 	//pack
 	
 	if ( has_c == true && has_f == true && has_o == true ) { 
+
+		//initscr();
 		
 		cryptotar newTar(output_file_name + ctar);
 
 	       	newTar.globalProgressCallback = customProgress; 
 
-		if ( has_n == true && has_m == true ) newTar.setCryptoModule(methodPath, key, key.size());
+		if ( has_n == true && has_m == true )  newTar.setCryptoModule(methodPath, key, key.size()); 
 
 		while ( paths.empty() != true ) { newTar.addPath(paths.back()); paths.pop_back(); }
 
 		newTar.closeTar();
+
+		//getch();
+
+		//endwin();
+
+		std::cout << "--------------------------------------------------\n" << "CTAR archive is complited!" << std::endl;
 	}		
 	
 
 	//unpack
 
 	if ( has_u == true ) {
+
+		initscr();
 
 		cryptotar tarEx;
 
@@ -201,7 +217,14 @@ int main(int argc, char *argv[]){
 
 		else tarEx.unpackTar(unpack_ctar, ".");
 
+		getch();
+
+		endwin();
+
+		std::cout << "--------------------------------------------------\n" <<"Unpacking is complete!" << std::endl;
+
 	}
+
 
 	return 0;
 }
