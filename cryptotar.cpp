@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <ncurses.h>
 #include <getopt.h>
 #include <vector>
 
@@ -11,9 +10,7 @@ int countPercentage = 10, blocks = 0;
 
 void customProgress(size_t bytesRead, size_t fileSize, char* fileName){ 
 
-	double Read = (double) bytesRead, Size = (double) fileSize; int finishingPercentage = Read/Size*100;
-
-	//const int Percentage[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}; 
+	double Read = (double) bytesRead, Size = (double) fileSize; int finishingPercentage = Read/Size*100; 
 
 	if ( bytesRead <= 4096 ) std::cout << "File: " << fileName << "\t[";
 
@@ -24,17 +21,8 @@ void customProgress(size_t bytesRead, size_t fileSize, char* fileName){
 	if ( bytesRead == fileSize ) { std::cout << "] " << finishingPercentage << "%\nINFO:\nWritenB: " << bytesRead << "\tblocks: " << blocks << std::endl; blocks = 0; }	
 
 }
-/*
-char readMethod(){
 
-	std::cout << "Enter number: ";
-	char method;
-	std::cin >> method;
-	if (method == '1' || method == '2') { if (method == '1') std::cout << "You choosed: 1.rc4" << std::endl; else std::cout << "You choosed: 2.xor" << std::endl; }
-       	else { std::cout << "You must enter only method number!!!\n" << std::endl; readMethod(); }
-	return method;
-}
-*/
+
 std::string readKey(){
 
 	std::cout << "\nEnter key: ";
@@ -177,8 +165,6 @@ int main(int argc, char *argv[]){
 	
 	if ( has_c == true && has_f == true && has_o == true ) { 
 
-		//initscr();
-		
 		cryptotar newTar(output_file_name + ctar);
 
 	       	newTar.globalProgressCallback = customProgress; 
@@ -189,10 +175,6 @@ int main(int argc, char *argv[]){
 
 		newTar.closeTar();
 
-		//getch();
-
-		//endwin();
-
 		std::cout << "--------------------------------------------------\n" << "CTAR archive is complited!" << std::endl;
 	}		
 	
@@ -200,8 +182,6 @@ int main(int argc, char *argv[]){
 	//unpack
 
 	if ( has_u == true ) {
-
-		initscr();
 
 		cryptotar tarEx;
 
@@ -216,10 +196,6 @@ int main(int argc, char *argv[]){
 		}
 
 		else tarEx.unpackTar(unpack_ctar, ".");
-
-		getch();
-
-		endwin();
 
 		std::cout << "--------------------------------------------------\n" <<"Unpacking is complete!" << std::endl;
 
