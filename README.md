@@ -10,7 +10,7 @@
 <p align="center">
    <img src="https://img.shields.io/badge/BUILD-0.1-green?logo=linux" alt="Build linux" width="128">
    <img src="https://img.shields.io/badge/BUILD-0.1-green?logo=macOS" alt="Build macos" width="128">
-   <img src="https://img.shields.io/badge/BUILD-%E2%9C%98-red?logo=windows" alt="Build windows" width="128">
+   <img src="https://img.shields.io/badge/BUILD-0.1-green?logo=windows" alt="Build windows" width="128">
 </p>
 
 ## About
