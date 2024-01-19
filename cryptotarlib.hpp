@@ -14,6 +14,7 @@
 #include <stdarg.h>
 #include <dlfcn.h>
 #include <memory>
+#include <unordered_map>
 
 #ifdef LINUX
     #include <sys/sysmacros.h>
