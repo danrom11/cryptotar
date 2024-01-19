@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.12)
+project(test_cryptotarlib)
+
+set(CMAKE_CXX_STANDARD 17)
+
+set(SOURCES main.cpp)
+
+add_library(cryptotar STATIC cryptotarlib.cpp TarHeader.hpp sha256.cpp)
+
+add_executable(test_cryptotarlib ${SOURCES})
+
+target_link_libraries(test_cryptotarlib cryptotar)
