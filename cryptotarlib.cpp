@@ -293,16 +293,12 @@ int cryptotar::configDir(std::string& path, const WIN32_FILE_ATTRIBUTE_DATA& sta
             fileAttributeData.nFileSizeLow = findFileData.nFileSizeLow;
 
             if (!(findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                std::cout << "FILE: " << findFileData.cFileName << std::endl;
                 std::string fileName = path + findFileData.cFileName;
-                std::cout << "Dir to file: " << fileName << std::endl;
                 configFile(fileName, fileAttributeData, px);
             }
             else {
                 if (strcmp(findFileData.cFileName, ".") != 0 && strcmp(findFileData.cFileName, "..") != 0) {
-                    std::cout << "DIR: " << findFileData.cFileName << std::endl;
                     std::string dirName = path + findFileData.cFileName;
-                    std::cout << "Dir to dir: " << dirName << std::endl;
                     configDir(dirName, fileAttributeData, px);
                 }
             }
